@@ -1,6 +1,16 @@
-# VIPCore for SwiftlyS2
+<div align="center">
+  <img src="https://pan.samyyc.dev/s/VYmMXE" />
+  <h2><strong>VIPCore</strong></h2>
+  <h3>A comprehensive VIP management system for Counter-Strike 2 servers running SwiftlyS2.</h3>
+</div>
 
-A comprehensive VIP management system for Counter-Strike 2 servers running SwiftlyS2.
+<p align="center">
+  <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build Status">
+  <img src="https://img.shields.io/github/downloads/aga/VIPCore/total" alt="Downloads">
+  <img src="https://img.shields.io/github/stars/aga/VIPCore?style=flat&logo=github" alt="Stars">
+  <img src="https://img.shields.io/github/license/aga/VIPCore" alt="License">
+</p>
+
 
 ## Features
 
@@ -25,7 +35,6 @@ The API contract is distributed as a NuGet package: **`SwiftlyS2.VIPCore.Contrac
 
 ### Prerequisites
 
-- .NET 10 SDK
 - [SwiftlyS2.CS2](https://www.nuget.org/packages/SwiftlyS2.CS2) NuGet package
 - [SwiftlyS2.VIPCore.Contract](https://www.nuget.org/packages/SwiftlyS2.VIPCore.Contract) NuGet package
 
