@@ -1,0 +1,5 @@
+{
+  "vip.antiflash": "Anti-Flash",
+  "antiflash.Enabled": "[blue]Anti-Flash[default]: [green]Enabled[default]",
+  "antiflash.Disabled": "[blue]Anti-Flash[default]: [red]Disabled[default]"
+}

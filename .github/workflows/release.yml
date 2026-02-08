@@ -1,0 +1,221 @@
+name: Build and Release
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: true
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build]')
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from PluginMetadata
+        id: version
+        run: |
+          # Find Version = "x.y.z" in any .cs file
+          VERSION=$(grep -roh 'Version *= *"[^"]*"' --include="*.cs" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not find PluginMetadata Version"
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+          cache: true
+          cache-dependency-path: "**/*.csproj"
+
+      - name: Restore and Publish
+        run: |
+          LOCAL_NUGET_SOURCE="$(pwd)/nupkgs"
+          mkdir -p "$LOCAL_NUGET_SOURCE"
+
+          CONTRACT_PROJECT="./VIPCore.Contract/VIPCore.Contract.csproj"
+          VIPCORE_PROJECT="./VIPCore/VIPCore.csproj"
+          MODULE_PROJECTS=$(find ./Modules -maxdepth 2 -name "*.csproj" -type f | sort)
+
+          echo "Building contract (produces DLL + local nupkg): $CONTRACT_PROJECT"
+          dotnet restore "$CONTRACT_PROJECT" \
+            --source "$LOCAL_NUGET_SOURCE" \
+            --source "https://api.nuget.org/v3/index.json"
+          dotnet build "$CONTRACT_PROJECT" -c Release
+
+          echo "Publishing VIPCore: $VIPCORE_PROJECT"
+          dotnet restore "$VIPCORE_PROJECT" \
+            --source "$LOCAL_NUGET_SOURCE" \
+            --source "https://api.nuget.org/v3/index.json"
+          dotnet publish "$VIPCORE_PROJECT" -c Release
+
+          echo "Publishing modules:"
+          echo "$MODULE_PROJECTS"
+          for PROJECT in $MODULE_PROJECTS; do
+            echo "Publishing: $PROJECT"
+            dotnet restore "$PROJECT" \
+              --source "$LOCAL_NUGET_SOURCE" \
+              --source "https://api.nuget.org/v3/index.json"
+            dotnet publish "$PROJECT" -c Release
+          done
+
+      - name: Publish VIPCore.Contract to NuGet.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          NUPKG=$(find ./nupkgs -name "VIPCore.Contract.*.nupkg" | sort -V | tail -1)
+          if [ -z "$NUPKG" ]; then
+            echo "::warning::No VIPCore.Contract nupkg found, skipping NuGet publish"
+            exit 0
+          fi
+          echo "Publishing $NUPKG to NuGet.org"
+          dotnet nuget push "$NUPKG" \
+            --api-key "$NUGET_API_KEY" \
+            --source "https://api.nuget.org/v3/index.json" \
+            --skip-duplicate
+
+      - name: Prepare release artifacts
+        id: zip
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          rm -rf release-staging release-artifacts
+          mkdir -p release-staging/VIPCore/VIPCore
+          mkdir -p release-staging/Modules/Modules
+          mkdir -p release-artifacts
+
+          VIPCORE_PUBLISH_DIR="./VIPCore/build/publish/VIPCore"
+          if [ ! -d "$VIPCORE_PUBLISH_DIR" ]; then
+            echo "::error::VIPCore publish directory not found: $VIPCORE_PUBLISH_DIR"
+            exit 1
+          fi
+
+          cp -R "$VIPCORE_PUBLISH_DIR/." "release-staging/VIPCore/VIPCore/"
+
+          # Copy each module publish directory into Modules/<ModuleName>
+          # Match only the immediate child of publish/ (the module root), not deeper subdirectories
+          MODULE_PUBLISH_DIRS=$(find ./Modules -mindepth 4 -maxdepth 4 -type d -path "*/build/publish/*" | sort)
+          if [ -z "$MODULE_PUBLISH_DIRS" ]; then
+            echo "::error::No module publish directories found"
+            exit 1
+          fi
+
+          for DIR in $MODULE_PUBLISH_DIRS; do
+            NAME=$(basename "$DIR")
+            echo "Staging module: $NAME from $DIR"
+            mkdir -p "release-staging/Modules/Modules/$NAME"
+            cp -R "$DIR/." "release-staging/Modules/Modules/$NAME/"
+          done
+
+          echo "=== Staged VIPCore contents ==="
+          find release-staging/VIPCore -maxdepth 3 -type f | head -30
+          echo "=== Staged Modules contents ==="
+          find release-staging/Modules -maxdepth 4 -type f | head -50
+
+          (cd release-staging/VIPCore && zip -r "../../release-artifacts/VIPCore-v${VERSION}.zip" "VIPCore" > /dev/null)
+          (cd release-staging/Modules && zip -r "../../release-artifacts/Modules-v${VERSION}.zip" "Modules" > /dev/null)
+
+          echo "vipcore_zip=release-artifacts/VIPCore-v${VERSION}.zip" >> $GITHUB_OUTPUT
+          echo "modules_zip=release-artifacts/Modules-v${VERSION}.zip" >> $GITHUB_OUTPUT
+
+      - name: Determine release tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+
+          # Find next available tag/build number
+          BASE_TAG="v${VERSION}"
+          TAG="$BASE_TAG"
+          TITLE="${REPO_NAME} | ${BASE_TAG}"
+          BUILD_NUM=1
+
+          while gh release view "$TAG" &>/dev/null; do
+            BUILD_NUM=$((BUILD_NUM + 1))
+            TAG="${BASE_TAG}-${BUILD_NUM}"
+            TITLE="${REPO_NAME} | ${BASE_TAG}#${BUILD_NUM}"
+            echo "Tag $BASE_TAG exists, trying: $TAG"
+          done
+
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "Determined tag: $TAG (Title: $TITLE)"
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          NEW_TAG="${{ steps.tag.outputs.tag }}"
+          CHANGELOG=""
+
+          # Extract changelog section if file exists (matches both [v1.0.1] and [1.0.1])
+          if [ -f "CHANGELOG.md" ]; then
+            CHANGELOG=$(awk -v ver="$VERSION" '
+              /^## \[/ {
+                if (found) exit
+                if ($0 ~ "\\[v?" ver "\\]") { found=1; next }
+              }
+              found { print }
+            ' CHANGELOG.md)
+          fi
+
+          if [ -z "$CHANGELOG" ]; then
+            CHANGELOG="Release v$VERSION"
+          fi
+
+          # Get the most recent existing tag
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          # Build release body
+          {
+            echo "body<<EOF"
+            echo "$CHANGELOG"
+            echo ""
+            if [ -n "$PREV_TAG" ]; then
+              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${NEW_TAG}"
+            fi
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.tag.outputs.tag }}"
+          TITLE="${{ steps.tag.outputs.title }}"
+
+          # Auto-detect pre-release (contains -)
+          PRERELEASE_FLAG=""
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+            echo "Detected pre-release version"
+          fi
+
+          echo "Creating release: $TAG (Title: $TITLE)"
+
+          gh release create "$TAG" \
+            --title "$TITLE" \
+            --notes "${{ steps.changelog.outputs.body }}" \
+            $PRERELEASE_FLAG \
+            "${{ steps.zip.outputs.vipcore_zip }}" \
+            "${{ steps.zip.outputs.modules_zip }}"
+
+          echo "Release $TAG created successfully!"

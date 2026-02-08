@@ -1,0 +1,8 @@
+{
+  "vip.fov": "Field of View",
+  "fov.MenuTitle": "Select FOV",
+  "fov.Option": "FOV {0}",
+  "fov.Disable": "Disabled",
+  "fov.On": "FOV set to {0}",
+  "fov.Off": "FOV disabled"
+}
