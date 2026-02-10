@@ -18,6 +18,11 @@ using System.IO;
 
 namespace VIPCore;
 
+// Local marker interface for Cookies API - allows compile-time generic usage
+public interface IPlayerCookiesAPIv1
+{
+}
+
 [PluginMetadata(Id = "VIPCore", Version = "1.0.0", Name = "VIPCore", Author = "aga", Description = "Core VIP management plugin ported to SwiftlyS2.")]
 public partial class VIPCore : BasePlugin
 {
@@ -34,47 +39,20 @@ public partial class VIPCore : BasePlugin
 
     private void TryResolveCookiesApi()
     {
-        var interfaceManager = _interfaceManager;
-        if (interfaceManager == null)
+        if (_interfaceManager == null)
             return;
 
         try
         {
-            if (!interfaceManager.HasSharedInterface("Cookies.Player.v1"))
+            if (!_interfaceManager.HasSharedInterface("Cookies.Player.v1"))
                 return;
 
-            // Use reflection to call GetSharedInterface<T> with the correct runtime type,
-            // since VIPCore doesn't reference Cookies.Contract at compile time.
-            var managerType = interfaceManager.GetType();
-            var method = managerType.GetMethod("GetSharedInterface");
-            if (method == null) return;
-
-            // Find the IPlayerCookiesAPIv1 type from loaded assemblies
-            Type? cookiesInterfaceType = null;
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                cookiesInterfaceType = asm.GetType("Cookies.Contract.IPlayerCookiesAPIv1");
-                if (cookiesInterfaceType != null) break;
-            }
-
-            if (cookiesInterfaceType == null)
-            {
-                Core.Logger.LogWarning("[VIPCore] Cookies.Contract.IPlayerCookiesAPIv1 type not found in loaded assemblies.");
-                return;
-            }
-
-            var genericMethod = method.MakeGenericMethod(cookiesInterfaceType);
-            _playerCookiesApi = genericMethod.Invoke(interfaceManager, new[] { "Cookies.Player.v1" });
-
-            if (_playerCookiesApi == null)
+            var cookiesApi = _interfaceManager.GetSharedInterface<IPlayerCookiesAPIv1>("Cookies.Player.v1");
+            if (cookiesApi == null)
                 return;
 
-            var serviceProvider = _serviceProvider;
-            if (serviceProvider != null)
-            {
-                var cookieService = serviceProvider.GetRequiredService<CookieService>();
-                cookieService.SetPlayerCookiesApi(_playerCookiesApi);
-            }
+            _playerCookiesApi = cookiesApi;
+            _serviceProvider?.GetRequiredService<CookieService>().SetPlayerCookiesApi(_playerCookiesApi);
 
             _cookiesResolveRetryCts?.Cancel();
             _cookiesResolveRetryCts = null;
