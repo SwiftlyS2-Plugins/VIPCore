@@ -7,7 +7,7 @@
   "vip.NoAccess": "You don't have access to this command!",
   "vip.AlreadyVipPrivileges": "You already have VIP privileges.",
   "chat.Enabled": "[green]Enabled[default]",
-  "chat.Disabled": "[red]Disabled[default]",
+  "chat.Disabled": "[darkred]Disabled[default]",
   "chat.NoAccess": "No access",
 
   "manage.Title": "[[blue]VIP Management[default]]",
