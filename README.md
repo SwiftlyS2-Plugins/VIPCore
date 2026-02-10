@@ -6,11 +6,21 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build Status">
-  <img src="https://img.shields.io/github/downloads/aga/VIPCore/total" alt="Downloads">
-  <img src="https://img.shields.io/github/stars/aga/VIPCore?style=flat&logo=github" alt="Stars">
-  <img src="https://img.shields.io/github/license/aga/VIPCore" alt="License">
+  <img src="https://img.shields.io/github/downloads/SwiftlyS2-Plugins/VIPCore/total" alt="Downloads">
+  <img src="https://img.shields.io/github/stars/SwiftlyS2-Plugins/VIPCore?style=flat&logo=github" alt="Stars">
+  <img src="https://img.shields.io/github/license/SwiftlyS2-Plugins/VIPCore" alt="License">
 </p>
 
+## Overview
+
+VIPCore is a VIP management framework for SwiftlyS2 CS2 servers.
+It provides database-backed VIP groups, a shared API for feature modules, and a menu-driven experience so VIP players can enable/disable features that your server grants them.
+
+## Requirements
+
+- SwiftlyS2 for Counter-Strike 2
+- A database supported by VIPCore migrations (VIPCore uses FluentMigrator + Dapper)
+- The [Cookies](https://github.com/SwiftlyS2-Plugins/Cookies) plugin (used to persist per-player feature preferences)
 
 ## Features
 
@@ -23,10 +33,110 @@
 
 ## Installation
 
-1. Place `VIPCore.dll` in `(swRoot)/plugins/VIPCore/`
-2. Place `VIPCore.Contract.dll` in `(swRoot)/plugins/VIPCore/resources/exports/`
-3. Configure `vip_groups.jsonc` and `config.jsonc` in the configs folder
-4. Restart the server
+1. Copy the published `VIPCore` plugin folder to your server:
+   `(swRoot)/plugins/VIPCore/`
+2. Ensure the plugin has its `resources/` folder alongside `VIPCore.dll`.
+3. Ensure `VIPCore.Contract.dll` is present at:
+   `(swRoot)/plugins/VIPCore/resources/exports/`
+4. Configure `vip_groups.jsonc` and `config.jsonc` in your SwiftlyS2 configs folder.
+5. Restart the server.
+
+## Commands
+
+| Command | Permission | Description |
+| :--- | :--- | :--- |
+| `vip` | Player | Opens the VIP menu for the current player. |
+| `vip_manage` | `vipcore.manage` | Opens the VIP management menu (in-game). |
+| `vip_adduser <steamid> <group> <time>` | `vipcore.adduser` | Adds a SteamID to a VIP group for a duration based on `TimeMode`. Use `0` for permanent. |
+| `vip_deleteuser <steamid>` | `vipcore.deleteuser` | Removes VIP status for a SteamID. |
+
+Console usage: SwiftlyS2 console commands are typically exposed with the `sw_` prefix (for example `sw_vip`, `sw_vip_adduser`, etc.).
+
+## Configuration
+
+VIPCore uses two config files:
+
+- `config.jsonc` (section: `vip`)
+- `vip_groups.jsonc` (section: `vip_groups`)
+
+### `config.jsonc` (`vip`)
+
+| Setting | Default | Description |
+| :--- | :--- | :--- |
+| `Delay` | `2.0` | General delay value (seconds) used by VIPCore where applicable. |
+| `DatabaseConnection` | `"default"` | Database connection name from your SwiftlyS2 database configuration. |
+| `TimeMode` | `0` | Time unit for `vip_adduser` and management menus: `0=seconds`, `1=minutes`, `2=hours`, `3=days`. |
+| `UseCenterHtmlMenu` | `true` | Use the center HTML menu style when available. |
+| `ReOpenMenuAfterItemClick` | `false` | If enabled, reopens the VIP menu after selecting a feature item. |
+| `VipLogging` | `true` | Enables debug logging related to VIP loading/feature initialization. |
+
+#### Example
+
+```jsonc
+{
+  "vip": {
+    "Delay": 2.0,
+    "DatabaseConnection": "default",
+    "TimeMode": 0,
+    "UseCenterHtmlMenu": true,
+    "ReOpenMenuAfterItemClick": false,
+    "VipLogging": true
+  }
+}
+```
+
+### `vip_groups.jsonc` (`vip_groups`)
+
+Define groups and the features they grant.
+
+- A group is a named entry under `vip_groups.Groups` (e.g. `VIP`, `MVIP`).
+- Features are defined under `Values`.
+- A feature value can be:
+  - `1` / `0` (simple enabled/disabled defaults for toggle features)
+  - An object (feature-specific settings, defined by the module)
+
+#### Example
+
+```jsonc
+{
+  "vip_groups": {
+    "Groups": {
+      "VIP": {
+        "Values": {
+          "vip.zeus": 1,
+          "vip.armor": { "Armor": 100 },
+          "vip.bhop": { "Timer": 5.0, "MaxSpeed": 300.0 }
+        }
+      },
+      "MVIP": {
+        "Values": {
+          "vip.armor": { "Armor": 50 }
+        }
+      }
+    }
+  }
+}
+```
+
+## Included Modules
+
+This repository ships several optional VIP modules (each one is a standalone SwiftlyS2 plugin that registers features into VIPCore):
+
+| Module | Description |
+| :--- | :--- |
+| `VIP_AntiFlash` | Anti-flash feature module |
+| `VIP_Armor` | Armor feature module |
+| `VIP_Bhop` | Bunnyhop-related feature module |
+| `VIP_DoubleJump` | Double jump feature module |
+| `VIP_FastReload` | Fast reload feature module |
+| `VIP_Fov` | Field-of-view feature module |
+| `VIP_GoldMember` | Gold member group/feature module |
+| `VIP_Health` | Health-related feature module |
+| `VIP_KillScreen` | Kill screen feature module |
+| `VIP_NoFallDamage` | No fall damage feature module |
+| `VIP_SmokeColor` | Smoke color feature module |
+| `VIP_Tag` | Tag feature module |
+| `VIP_Zeus` | Zeus feature module |
 
 ## Creating VIP Module Plugins
 
@@ -224,7 +334,7 @@ Add your feature key to `vip_groups.jsonc` on the server:
 {
   "vip_groups": {
     "Groups": {
-      "GOLD": {
+      "VIP": {
         "Values": {
           "vip.yourfeature": 1  // 1 = enabled by default, 0 = disabled
         }
@@ -240,7 +350,7 @@ For features with extra settings, nest an object instead of a simple value:
 {
   "vip_groups": {
     "Groups": {
-      "GOLD": {
+      "VIP": {
         "Values": {
           "vip.bhop": {
             "Timer": 5.0,
