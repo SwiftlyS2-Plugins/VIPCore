@@ -1,0 +1,7 @@
+{
+  "vip.bhop": "BunnyHop",
+  "bhop.Enabled": "[blue]BunnyHop[default]: [green]Ativado[default]",
+  "bhop.Disabled": "[blue]BunnyHop[default]: [red]Desativado[default]",
+  "bhop.TimeToActivation": "O BunnyHop será ativado em [red]{0}[default]s.",
+  "bhop.Activated": "BunnyHop ativado!"
+}
