@@ -69,7 +69,7 @@ public class VIP_Bhop : BasePlugin
 
         Core.Event.OnClientConnected += OnClientConnected;
         Core.Event.OnClientDisconnected += OnClientDisconnected;
-        Core.Event.OnClientProcessUsercmds += OnClientProcessUsercmds;
+        Core.Event.OnTick += OnTick;
         Core.GameEvent.HookPre<EventRoundStart>(OnRoundStart);
 
         RegisterVipFeaturesWhenReady();
@@ -99,9 +99,40 @@ public class VIP_Bhop : BasePlugin
         UpdateGlobalBhopState();
     }
 
-    private void OnClientProcessUsercmds(IOnClientProcessUsercmdsEvent @event)
+    private void OnTick()
     {
-        return;
+        if (_autobunnyhopping == null || _enablebunnyhopping == null) return;
+
+        foreach (var player in Core.PlayerManager.GetAllPlayers())
+        {
+            if (player == null || !player.IsValid || player.IsFakeClient) continue;
+            if (player.PlayerID < 0 || player.PlayerID >= _bhopSettings.Length) continue;
+
+            var settings = _bhopSettings[player.PlayerID];
+            var entitled = settings.Active && settings.Enabled;
+
+            SetBunnyhop(player, entitled);
+
+            if (entitled && player.IsAlive)
+                ClampPlayerSpeed(player, settings.MaxSpeed);
+        }
+    }
+
+    private static void ClampPlayerSpeed(IPlayer player, float maxSpeed)
+    {
+        if (maxSpeed <= 0) return;
+
+        var pawn = player.PlayerPawn;
+        if (pawn == null || !pawn.IsValid) return;
+
+        var velocity = pawn.AbsVelocity;
+        var horizontalSpeed = Math.Sqrt((velocity.X * velocity.X) + (velocity.Y * velocity.Y));
+        if (horizontalSpeed <= maxSpeed || horizontalSpeed <= 0.001f) return;
+
+        var ratio = (float)(maxSpeed / horizontalSpeed);
+        pawn.AbsVelocity.X *= ratio;
+        pawn.AbsVelocity.Y *= ratio;
+        pawn.VelocityUpdated();
     }
 
     private void UpdateGlobalBhopState()
@@ -240,7 +271,7 @@ public class VIP_Bhop : BasePlugin
     {
         Core.Event.OnClientConnected -= OnClientConnected;
         Core.Event.OnClientDisconnected -= OnClientDisconnected;
-        Core.Event.OnClientProcessUsercmds -= OnClientProcessUsercmds;
+        Core.Event.OnTick -= OnTick;
 
         if (_vipApi != null)
         {
