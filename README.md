@@ -127,6 +127,8 @@ This repository ships several optional VIP modules (each one is a standalone Swi
 | `VIP_Armor` | Armor feature module |
 | `VIP_Bhop` | Bunnyhop-related feature module |
 | `VIP_DoubleJump` | Double jump feature module |
+| `VIP_FastDefuse` | Fast defuse feature module |
+| `VIP_FastPlant` | Fast plant feature module |
 | `VIP_FastReload` | Fast reload feature module |
 | `VIP_Fov` | Field-of-view feature module |
 | `VIP_GoldMember` | Gold member group/feature module |
