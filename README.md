@@ -137,6 +137,7 @@ This repository ships several optional VIP modules (each one is a standalone Swi
 | `VIP_NoFallDamage` | No fall damage feature module |
 | `VIP_SmokeColor` | Smoke color feature module |
 | `VIP_Tag` | Tag feature module |
+| `VIP_Vampirism` | Vampirism feature module |
 | `VIP_Zeus` | Zeus feature module |
 
 ## Creating VIP Module Plugins
