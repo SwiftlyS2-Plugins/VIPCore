@@ -28,6 +28,8 @@
   "manage.ChangeGroup": "Alterar grupo",
   "manage.ExtendDuration": "Estender duração",
   "manage.RemoveVip": "Remover VIP",
+  "manage.AddGroup": "Adicionar Grupo",
+  "manage.RemoveAllVip": "Remover todos os grupos VIP",
   "manage.ChangeGroupTitle": "[[blue]Alterar grupo para {0}[default]]",
   "manage.CurrentGroup": "{0} [Atual]",
   "manage.ExtendTitle": "[[blue]Estender duração para {0} ({1})[default]]",
