@@ -180,6 +180,7 @@ public class ManageMenuService(
                             core.Scheduler.NextTick(() => args.Player.SendMessage(MessageType.Chat, loc["manage.chat.FailedAddVip", ex.Message]));
                         }
                     });
+                    core.MenusAPI.CloseActiveMenu(args.Player);
                 });
                 await ValueTask.CompletedTask;
             };
@@ -220,6 +221,7 @@ public class ManageMenuService(
                         core.Scheduler.NextTick(() => args.Player.SendMessage(MessageType.Chat, loc["manage.chat.FailedAddVip", ex.Message]));
                     }
                 });
+                core.MenusAPI.CloseActiveMenu(args.Player);
             });
             await ValueTask.CompletedTask;
         };
@@ -316,6 +318,7 @@ public class ManageMenuService(
                         core.Scheduler.NextTick(() => args.Player.SendMessage(MessageType.Chat, loc["manage.chat.FailedRemoveVip", ex.Message]));
                     }
                 });
+                core.MenusAPI.CloseActiveMenu(args.Player);
             });
             await ValueTask.CompletedTask;
         };
@@ -374,6 +377,7 @@ public class ManageMenuService(
                         core.Scheduler.NextTick(() => args.Player.SendMessage(MessageType.Chat, loc["manage.chat.FailedRemoveVip", ex.Message]));
                     }
                 });
+                core.MenusAPI.CloseActiveMenu(args.Player);
             });
             await ValueTask.CompletedTask;
         };
@@ -470,6 +474,7 @@ public class ManageMenuService(
                             core.Scheduler.NextTick(() => args.Player.SendMessage(MessageType.Chat, loc["manage.chat.FailedExtend", ex.Message]));
                         }
                     });
+                    core.MenusAPI.CloseActiveMenu(args.Player);
                 });
                 await ValueTask.CompletedTask;
             };
@@ -508,6 +513,7 @@ public class ManageMenuService(
                         core.Scheduler.NextTick(() => args.Player.SendMessage(MessageType.Chat, loc["manage.chat.FailedMakePermanent", ex.Message]));
                     }
                 });
+                core.MenusAPI.CloseActiveMenu(args.Player);
             });
             await ValueTask.CompletedTask;
         };

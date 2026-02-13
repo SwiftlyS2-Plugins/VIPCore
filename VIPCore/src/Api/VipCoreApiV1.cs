@@ -56,7 +56,7 @@ public class VipCoreApiV1 : IVipCoreApiV1
     {
         if (Config.VipLogging)
             _core.Logger.LogDebug("[VIPCore] Api: Registering feature '{Key}'", featureKey);
-        
+
         if (_serviceProvider == null)
         {
             _core.Logger.LogWarning("[VIPCore] Api: Cannot register feature '{Key}' - ServiceProvider is null!", featureKey);
@@ -165,7 +165,7 @@ public class VipCoreApiV1 : IVipCoreApiV1
             try
             {
                 await VipService.AddVip(steamId, name, group, time);
-                
+
                 // Validate player is still valid before loading
                 if (!player.IsValid) return;
                 await VipService.LoadPlayer(player);

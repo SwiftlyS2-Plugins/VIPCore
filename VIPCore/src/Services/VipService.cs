@@ -13,8 +13,8 @@ using Microsoft.Extensions.Options;
 namespace VIPCore.Services;
 
 public class VipService(
-    ISwiftlyCore core, 
-    IUserRepository userRepository, 
+    ISwiftlyCore core,
+    IUserRepository userRepository,
     FeatureService featureService,
     CookieService cookieService,
     IOptionsMonitor<VipConfig> coreConfigMonitor,
@@ -41,7 +41,7 @@ public class VipService(
         if (player.IsFakeClient) return;
 
         var allGroups = (await userRepository.GetUserGroupsAsync((long)player.SteamID, serverIdentifier.ServerId)).ToList();
-        
+
         if (allGroups.Count == 0) return;
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -79,9 +79,9 @@ public class VipService(
             g.name = player.Controller.PlayerName;
             await userRepository.UpdateUserAsync(g);
         }
-        
+
         if (coreConfig.VipLogging)
-            core.Logger.LogDebug("[VIPCore] Loaded VIP player {Name} ({SteamId}) with active group {Group} (owns: {OwnedGroups})", 
+            core.Logger.LogDebug("[VIPCore] Loaded VIP player {Name} ({SteamId}) with active group {Group} (owns: {OwnedGroups})",
                 player.Controller.PlayerName, player.SteamID, activeUser.group, string.Join(", ", vipUser.OwnedGroups));
     }
 
@@ -175,7 +175,7 @@ public class VipService(
         foreach (var kvp in _users)
         {
             var user = kvp.Value;
-            
+
             if (user.FeatureStates.ContainsKey(featureKey))
                 continue;
 
@@ -191,9 +191,9 @@ public class VipService(
 
             var cookieVal = cookieService.GetCookie<int?>((ulong)user.account_id, featureKey);
             user.FeatureStates[featureKey] = cookieVal.HasValue ? (FeatureState)cookieVal.Value : FeatureState.Enabled;
-            
+
             if (coreConfig.VipLogging)
-                core.Logger.LogDebug("[VIPCore] Initialized late-registered feature '{Feature}' for loaded player {AccountId} (Group: {Group}, State: {State})", 
+                core.Logger.LogDebug("[VIPCore] Initialized late-registered feature '{Feature}' for loaded player {AccountId} (Group: {Group}, State: {State})",
                 featureKey, user.account_id, user.group, user.FeatureStates[featureKey]);
         }
     }
