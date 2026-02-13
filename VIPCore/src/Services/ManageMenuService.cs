@@ -333,9 +333,7 @@ public class ManageMenuService(
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
 
-        var expiresText = user.expires == 0 
-            ? localizer["manage.Permanent"] 
-            : DateTimeOffset.FromUnixTimeSeconds(user.expires).UtcDateTime.ToString("yyyy-MM-dd HH:mm");
+        var expiresText = user.expires == 0 ? localizer["manage.Permanent"] : DateTimeOffset.FromUnixTimeSeconds(user.expires).ToString("yyyy-MM-dd HH:mm");
         builder.Design.SetMenuTitle(localizer["manage.UserDetail", $"{user.name} - {user.group}"]);
 
         builder.AddOption(new TextMenuOption(localizer["manage.Group", user.group]));
@@ -389,7 +387,7 @@ public class ManageMenuService(
         core.MenusAPI.OpenMenuForPlayer(admin, menu);
     }
 
-    private void OpenAddGroupMenu(IPlayer admin, long steamId, string playerName, List<User> existingGroups)
+    private void OpenAddGroupMenu(IPlayer admin, long accountId, string playerName, List<User> existingGroups)
     {
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
@@ -405,7 +403,7 @@ public class ManageMenuService(
             option.Enabled = !alreadyHas;
             option.Click += async (sender, args) =>
             {
-                core.Scheduler.NextTick(() => OpenAddVipSelectTimeMenu(args.Player, steamId, playerName, group));
+                core.Scheduler.NextTick(() => OpenAddVipSelectTimeMenu(args.Player, accountId, playerName, group));
                 await ValueTask.CompletedTask;
             };
             builder.AddOption(option);
@@ -439,20 +437,20 @@ public class ManageMenuService(
                     {
                         try
                         {
-                            var nowUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                             var baseTime = user.expires == 0
-                                ? DateTimeOffset.UtcNow
-                                : (user.expires > nowUnix ? DateTimeOffset.FromUnixTimeSeconds(user.expires) : DateTimeOffset.UtcNow);
+                                ? DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                                : Math.Max(user.expires, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
+                            var baseOffset = DateTimeOffset.FromUnixTimeSeconds(baseTime);
                             var newExpires = coreConfig.TimeMode switch
                             {
-                                1 => baseTime.AddMinutes(t),
-                                2 => baseTime.AddHours(t),
-                                3 => baseTime.AddDays(t),
-                                _ => baseTime.AddSeconds(t)
+                                1 => baseOffset.AddMinutes(t).ToUnixTimeSeconds(),
+                                2 => baseOffset.AddHours(t).ToUnixTimeSeconds(),
+                                3 => baseOffset.AddDays(t).ToUnixTimeSeconds(),
+                                _ => baseOffset.AddSeconds(t).ToUnixTimeSeconds()
                             };
 
-                            user.expires = newExpires.ToUnixTimeSeconds();
+                            user.expires = newExpires;
                             await userRepository.UpdateUserAsync(user);
 
                             var target = core.PlayerManager.GetPlayerFromSteamId((ulong)user.account_id);
@@ -461,7 +459,7 @@ public class ManageMenuService(
                                 await vipService.LoadPlayer(target);
                             }
 
-                           var newExpiresText = DateTimeOffset.FromUnixTimeSeconds(newExpires).ToString("yyyy-MM-dd HH:mm");
+                            var newExpiresText = DateTimeOffset.FromUnixTimeSeconds(newExpires).ToString("yyyy-MM-dd HH:mm");
                             core.Scheduler.NextTick(() =>
                             {
                                 var loc = core.Translation.GetPlayerLocalizer(args.Player);
