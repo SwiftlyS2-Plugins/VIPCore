@@ -48,16 +48,6 @@ Add the items feature to your `vip_groups.jsonc` file:
             ]
           }
         }
-      },
-      "SILVER": {
-        "Values": {
-          "vip.items": {
-            "Weapons": [
-              "weapon_m4a1",
-              "weapon_flashbang"
-            ]
-          }
-        }
       }
     }
   }
