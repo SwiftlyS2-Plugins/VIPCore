@@ -8,16 +8,16 @@ public class User
 {
     [System.ComponentModel.DataAnnotations.Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
-    public long account_id { get; set; }
+    public ulong steam_id { get; set; }
     public required string name { get; set; }
-    public long lastvisit { get; set; }
+    public DateTime last_visit { get; set; }
     [System.ComponentModel.DataAnnotations.Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public long sid { get; set; }
     [System.ComponentModel.DataAnnotations.Key]
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public required string group { get; set; }
-    public long expires { get; set; }
+    public DateTime expires { get; set; }
 }
 
 [System.ComponentModel.DataAnnotations.Schema.Table("vip_servers")]

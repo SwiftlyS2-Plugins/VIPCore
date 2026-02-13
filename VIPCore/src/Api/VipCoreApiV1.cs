@@ -157,7 +157,7 @@ public class VipCoreApiV1 : IVipCoreApiV1
         if (_serviceProvider == null) return;
         if (!player.IsValid) return;
 
-        var steamId = (long)player.SteamID;
+        var steamId = player.SteamID;
         var name = player.Controller?.PlayerName ?? "unknown";
 
         Task.Run(async () =>
@@ -197,7 +197,7 @@ public class VipCoreApiV1 : IVipCoreApiV1
         if (_serviceProvider == null) return;
         if (!IsClientVip(player)) return;
 
-        var steamId = (long)player.SteamID;
+        var steamId = player.SteamID;
         var group = GetClientVipGroup(player);
 
         Task.Run(async () =>

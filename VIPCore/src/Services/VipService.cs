@@ -27,7 +27,7 @@ public class VipService(
     public bool IsClientVip(IPlayer player)
     {
         if (player.IsFakeClient) return false;
-        return _users.TryGetValue(player.SteamID, out var user) && (user.expires == 0 || user.expires > DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        return _users.TryGetValue(player.SteamID, out var user) && (user.expires == DateTime.MinValue || user.expires > DateTime.UtcNow);
     }
 
     public VipUser? GetVipUser(ulong steamId)
@@ -40,17 +40,17 @@ public class VipService(
     {
         if (player.IsFakeClient) return;
 
-        var allGroups = (await userRepository.GetUserGroupsAsync((long)player.SteamID, serverIdentifier.ServerId)).ToList();
-        
+        var allGroups = (await userRepository.GetUserGroupsAsync(player.SteamID, serverIdentifier.ServerId)).ToList();
+
         if (allGroups.Count == 0) return;
 
-        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var expiredGroups = allGroups.Where(u => u.expires != 0 && u.expires < now).ToList();
-        var validGroups = allGroups.Where(u => u.expires == 0 || u.expires >= now).ToList();
+        var now = DateTime.UtcNow;
+        var expiredGroups = allGroups.Where(u => u.expires != DateTime.MinValue && u.expires < now).ToList();
+        var validGroups = allGroups.Where(u => u.expires == DateTime.MinValue || u.expires >= now).ToList();
 
         foreach (var expired in expiredGroups)
         {
-            await userRepository.DeleteUserGroupAsync(expired.account_id, expired.sid, expired.group);
+            await userRepository.DeleteUserGroupAsync(expired.steam_id, expired.sid, expired.group);
             core.Logger.LogInformation("[VIPCore] VIP group '{Group}' expired for player {Name} ({SteamId})", expired.group, player.Controller.PlayerName, player.SteamID);
         }
 
@@ -61,9 +61,9 @@ public class VipService(
 
         var vipUser = new VipUser
         {
-            account_id = activeUser.account_id,
+            steam_id = activeUser.steam_id,
             name = activeUser.name,
-            lastvisit = now,
+            last_visit = now,
             sid = activeUser.sid,
             group = activeUser.group,
             expires = activeUser.expires,
@@ -75,11 +75,11 @@ public class VipService(
 
         foreach (var g in validGroups)
         {
-            g.lastvisit = now;
+            g.last_visit = now;
             g.name = player.Controller.PlayerName;
             await userRepository.UpdateUserAsync(g);
         }
-        
+
         if (coreConfig.VipLogging)
             core.Logger.LogDebug("[VIPCore] Loaded VIP player {Name} ({SteamId}) with active group {Group} (owns: {OwnedGroups})", 
                 player.Controller.PlayerName, player.SteamID, activeUser.group, string.Join(", ", vipUser.OwnedGroups));
@@ -126,7 +126,7 @@ public class VipService(
         var groupName = groupsConfig.Groups.Keys.FirstOrDefault(k => k.Equals(user.group, StringComparison.OrdinalIgnoreCase));
         if (groupName == null || !groupsConfig.Groups.TryGetValue(groupName, out var group))
         {
-            core.Logger.LogWarning("[VIPCore] Group '{Group}' not found in config for user {AccountId}", user.group, user.account_id);
+            core.Logger.LogWarning("[VIPCore] Group '{Group}' not found in config for user {SteamId}", user.group, user.steam_id);
             return;
         }
 
@@ -138,19 +138,19 @@ public class VipService(
                 continue;
             }
 
-            var cookieVal = cookieService.GetCookie<int?>((ulong)user.account_id, feature.Key);
+            var cookieVal = cookieService.GetCookie<int?>(user.steam_id, feature.Key);
             user.FeatureStates[feature.Key] = cookieVal.HasValue ? (FeatureState)cookieVal.Value : FeatureState.Enabled;
         }
     }
 
-    public async Task AddVip(long accountId, string name, string group, int time)
+    public async Task AddVip(ulong steamId, string name, string group, int time)
     {
         var expires = CalculateExpires(time);
         var user = new User
         {
-            account_id = accountId,
+            steam_id = steamId,
             name = name,
-            lastvisit = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            last_visit = DateTime.UtcNow,
             sid = serverIdentifier.ServerId,
             group = group,
             expires = expires
@@ -159,15 +159,15 @@ public class VipService(
         await userRepository.AddUserAsync(user);
     }
 
-    public async Task RemoveVip(long accountId)
+    public async Task RemoveVip(ulong steamId)
     {
-        await userRepository.DeleteUserAsync(accountId, serverIdentifier.ServerId);
-        _users.TryRemove((ulong)accountId, out _);
+        await userRepository.DeleteUserAsync(steamId, serverIdentifier.ServerId);
+        _users.TryRemove(steamId, out _);
     }
 
-    public async Task RemoveVipGroup(long accountId, string group)
+    public async Task RemoveVipGroup(ulong steamId, string group)
     {
-        await userRepository.DeleteUserGroupAsync(accountId, serverIdentifier.ServerId, group);
+        await userRepository.DeleteUserGroupAsync(steamId, serverIdentifier.ServerId, group);
     }
 
     public void InitializeFeatureForLoadedPlayers(string featureKey)
@@ -189,25 +189,25 @@ public class VipService(
                 continue;
             }
 
-            var cookieVal = cookieService.GetCookie<int?>((ulong)user.account_id, featureKey);
+            var cookieVal = cookieService.GetCookie<int?>(user.steam_id, featureKey);
             user.FeatureStates[featureKey] = cookieVal.HasValue ? (FeatureState)cookieVal.Value : FeatureState.Enabled;
-            
+
             if (coreConfig.VipLogging)
-                core.Logger.LogDebug("[VIPCore] Initialized late-registered feature '{Feature}' for loaded player {AccountId} (Group: {Group}, State: {State})", 
-                featureKey, user.account_id, user.group, user.FeatureStates[featureKey]);
+                core.Logger.LogDebug("[VIPCore] Initialized late-registered feature '{Feature}' for loaded player {SteamId} (Group: {Group}, State: {State})", 
+                featureKey, user.steam_id, user.group, user.FeatureStates[featureKey]);
         }
     }
 
-    private long CalculateExpires(int time)
+    private DateTime CalculateExpires(int time)
     {
-        if (time <= 0) return 0;
-        var now = DateTimeOffset.UtcNow;
+        if (time <= 0) return DateTime.MinValue;
+        var now = DateTime.UtcNow;
         return coreConfig.TimeMode switch
         {
-            1 => now.AddMinutes(time).ToUnixTimeSeconds(),
-            2 => now.AddHours(time).ToUnixTimeSeconds(),
-            3 => now.AddDays(time).ToUnixTimeSeconds(),
-            _ => now.AddSeconds(time).ToUnixTimeSeconds()
+            1 => now.AddMinutes(time),
+            2 => now.AddHours(time),
+            3 => now.AddDays(time),
+            _ => now.AddSeconds(time)
         };
     }
 }

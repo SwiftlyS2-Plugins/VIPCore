@@ -439,7 +439,7 @@ public partial class VIPCore : BasePlugin
             return;
         }
 
-        if (!long.TryParse(context.Args[0], out var steamId)) return;
+        if (!ulong.TryParse(context.Args[0], out var steamId)) return;
         var group = context.Args[1];
         if (!int.TryParse(context.Args[2], out var time)) return;
 
@@ -453,7 +453,7 @@ public partial class VIPCore : BasePlugin
 
                 Core.Scheduler.NextTick(() =>
                 {
-                    var target = FindOnlinePlayerBySteamId((ulong)steamId);
+                    var target = FindOnlinePlayerBySteamId(steamId);
                     if (target != null)
                     {
                         Task.Run(async () =>
@@ -530,7 +530,7 @@ public partial class VIPCore : BasePlugin
             return;
         }
 
-        if (!long.TryParse(context.Args[0], out var steamId)) return;
+        if (!ulong.TryParse(context.Args[0], out var steamId)) return;
 
         var vipService = _serviceProvider.GetRequiredService<VipService>();
 

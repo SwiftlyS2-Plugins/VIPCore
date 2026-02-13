@@ -9,13 +9,13 @@ namespace VIPCore.Database.Repositories;
 
 public interface IUserRepository
 {
-    Task<User?> GetUserAsync(long accountId, long serverId);
-    Task<IEnumerable<User>> GetUserGroupsAsync(long accountId, long serverId);
-    Task<IEnumerable<User>> GetExpiredUsersAsync(long serverId, long currentTime);
+    Task<User?> GetUserAsync(ulong steamId, long serverId);
+    Task<IEnumerable<User>> GetUserGroupsAsync(ulong steamId, long serverId);
+    Task<IEnumerable<User>> GetExpiredUsersAsync(long serverId, DateTime currentTime);
     Task AddUserAsync(User user);
     Task UpdateUserAsync(User user);
-    Task DeleteUserAsync(long accountId, long serverId);
-    Task DeleteUserGroupAsync(long accountId, long serverId, string group);
+    Task DeleteUserAsync(ulong steamId, long serverId);
+    Task DeleteUserGroupAsync(ulong steamId, long serverId, string group);
     Task<bool> ServerExistsAsync(string ip, int port);
     Task AddServerAsync(VipServer server);
     Task<long> GetServerIdAsync(string ip, int port);
@@ -34,24 +34,24 @@ public class UserRepository(DatabaseConnectionFactory connectionFactory) : IUser
             || msg.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase);
     }
 
-    public async Task<User?> GetUserAsync(long accountId, long serverId)
+    public async Task<User?> GetUserAsync(ulong steamId, long serverId)
     {
         using var db = connectionFactory.CreateConnection();
-        var users = await db.SelectAsync<User>(u => u.account_id == accountId && u.sid == serverId);
+        var users = await db.SelectAsync<User>(u => u.steam_id == steamId && u.sid == serverId);
         return users.FirstOrDefault();
     }
 
-    public async Task<IEnumerable<User>> GetUserGroupsAsync(long accountId, long serverId)
+    public async Task<IEnumerable<User>> GetUserGroupsAsync(ulong steamId, long serverId)
     {
         using var db = connectionFactory.CreateConnection();
-        var users = await db.SelectAsync<User>(u => u.account_id == accountId && u.sid == serverId);
+        var users = await db.SelectAsync<User>(u => u.steam_id == steamId && u.sid == serverId);
         return users.ToList();
     }
 
-    public async Task<IEnumerable<User>> GetExpiredUsersAsync(long serverId, long currentTime)
+    public async Task<IEnumerable<User>> GetExpiredUsersAsync(long serverId, DateTime currentTime)
     {
         using var db = connectionFactory.CreateConnection();
-        var users = await db.SelectAsync<User>(u => u.sid == serverId && u.expires < currentTime && u.expires > 0);
+        var users = await db.SelectAsync<User>(u => u.sid == serverId && u.expires < currentTime && u.expires > DateTime.MinValue);
         return users.ToList();
     }
 
@@ -74,18 +74,18 @@ public class UserRepository(DatabaseConnectionFactory connectionFactory) : IUser
         await db.UpdateAsync(user);
     }
 
-    public async Task DeleteUserAsync(long accountId, long serverId)
+    public async Task DeleteUserAsync(ulong steamId, long serverId)
     {
         using var db = connectionFactory.CreateConnection();
-        var groups = await db.SelectAsync<User>(u => u.account_id == accountId && u.sid == serverId);
+        var groups = await db.SelectAsync<User>(u => u.steam_id == steamId && u.sid == serverId);
         foreach (var user in groups)
             await db.DeleteAsync(user);
     }
 
-    public async Task DeleteUserGroupAsync(long accountId, long serverId, string group)
+    public async Task DeleteUserGroupAsync(ulong steamId, long serverId, string group)
     {
         using var db = connectionFactory.CreateConnection();
-        var user = new User { account_id = accountId, sid = serverId, group = group, name = string.Empty };
+        var user = new User { steam_id = steamId, sid = serverId, group = group, name = string.Empty };
         await db.DeleteAsync(user);
     }
 
