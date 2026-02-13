@@ -27,12 +27,12 @@ public class VipService(
     public bool IsClientVip(IPlayer player)
     {
         if (player.IsFakeClient) return false;
-        return _users.TryGetValue((long)player.SteamID, out var user) && (user.expires == 0 || user.expires > DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+        return _users.TryGetValue(player.SteamID, out var user) && (user.expires == 0 || user.expires > DateTimeOffset.UtcNow.ToUnixTimeSeconds());
     }
 
-    public VipUser? GetVipUser(long steamId)
+    public VipUser? GetVipUser(long accountId)
     {
-        _users.TryGetValue(steamId, out var user);
+        _users.TryGetValue(accountId, out var user);
         return user;
     }
 
@@ -40,7 +40,7 @@ public class VipService(
     {
         if (player.IsFakeClient) return;
 
-        var allGroups = (await userRepository.GetUserGroupsAsync((long)player.SteamID, serverIdentifier.ServerId)).ToList();
+        var allGroups = (await userRepository.GetUserGroupsAsync(player.SteamID, serverIdentifier.ServerId)).ToList();
 
         if (allGroups.Count == 0) return;
 
@@ -71,7 +71,7 @@ public class VipService(
         };
 
         InitializeFeaturesForUser(vipUser);
-        _users[(long)player.SteamID] = vipUser;
+        _users[player.SteamID] = vipUser;
 
         foreach (var g in validGroups)
         {
@@ -108,14 +108,14 @@ public class VipService(
 
     public void UnloadPlayer(IPlayer player)
     {
-        if (_users.TryRemove((long)player.SteamID, out var user))
+        if (_users.TryRemove(player.SteamID, out var user))
         {
             foreach (var state in user.FeatureStates)
             {
                 var feature = featureService.GetFeature(state.Key);
                 if (feature?.FeatureType == FeatureType.Toggle)
                 {
-                    cookieService.SetCookie((long)player.SteamID, state.Key, (int)state.Value);
+                    cookieService.SetCookie(player.SteamID, state.Key, (int)state.Value);
                 }
             }
         }
@@ -159,15 +159,15 @@ public class VipService(
         await userRepository.AddUserAsync(user);
     }
 
-    public async Task RemoveVip(long steamId)
+    public async Task RemoveVip(long accountId)
     {
-        await userRepository.DeleteUserAsync(steamId, serverIdentifier.ServerId);
-        _users.TryRemove(steamId, out _);
+        await userRepository.DeleteUserAsync(accountId, serverIdentifier.ServerId);
+        _users.TryRemove(accountId, out _);
     }
 
-    public async Task RemoveVipGroup(long steamId, string group)
+    public async Task RemoveVipGroup(long accountId, string group)
     {
-        await userRepository.DeleteUserGroupAsync(steamId, serverIdentifier.ServerId, group);
+        await userRepository.DeleteUserGroupAsync(accountId, serverIdentifier.ServerId, group);
     }
 
     public void InitializeFeatureForLoadedPlayers(string featureKey)

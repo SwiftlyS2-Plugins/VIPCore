@@ -78,7 +78,7 @@ public class MenuService(ISwiftlyCore core, FeatureService featureService, Cooki
                 try
                 {
                     var valueKey = feature.Key + ".value";
-                    var value = cookieService.GetCookie<int>((long)player.SteamID, valueKey);
+                    var value = cookieService.GetCookie<int>(player.SteamID, valueKey);
                     stateText = value == 0
                         ? $" [{localizer["chat.Disabled"]}]"
                         : $" [{value}]";
@@ -108,7 +108,7 @@ public class MenuService(ISwiftlyCore core, FeatureService featureService, Cooki
                     {
                         var newState = state == FeatureState.Enabled ? FeatureState.Disabled : FeatureState.Enabled;
                         user.FeatureStates[feature.Key] = newState;
-                        cookieService.SetCookie((long)player.SteamID, feature.Key, (int)newState);
+                        cookieService.SetCookie(player.SteamID, feature.Key, (int)newState);
                         
                         feature.OnSelectItem?.Invoke(args.Player, newState);
                         

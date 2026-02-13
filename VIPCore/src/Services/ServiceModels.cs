@@ -16,7 +16,7 @@ public class Feature
 
 public class PlayerCookie
 {
-    public long SteamId64 { get; set; }
+    public ulong SteamId64 { get; set; }
     public Dictionary<string, object> Features { get; set; } = new();
 }
 

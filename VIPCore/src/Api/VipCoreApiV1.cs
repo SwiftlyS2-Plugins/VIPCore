@@ -113,14 +113,14 @@ public class VipCoreApiV1 : IVipCoreApiV1
         if (_serviceProvider == null) return default!;
 
         CookieService.LoadForPlayer(player);
-        return CookieService.GetCookie<T>((long)player.SteamID, key);
+        return CookieService.GetCookie<T>(player.SteamID, key);
     }
 
     public void SetPlayerCookie<T>(IPlayer player, string key, T value)
     {
         if (_serviceProvider == null) return;
 
-        CookieService.SetCookie((long)player.SteamID, key, value);
+        CookieService.SetCookie(player.SteamID, key, value);
     }
 
     public IEnumerable<string> GetAllRegisteredFeatures()
@@ -130,7 +130,7 @@ public class VipCoreApiV1 : IVipCoreApiV1
 
     public FeatureState GetPlayerFeatureState(IPlayer player, string featureKey)
     {
-        var user = VipService.GetVipUser((long)player.SteamID);
+        var user = VipService.GetVipUser(player.SteamID);
         if (user == null) return FeatureState.NoAccess;
 
         return user.FeatureStates.TryGetValue(featureKey, out var state)
@@ -140,7 +140,7 @@ public class VipCoreApiV1 : IVipCoreApiV1
 
     public void SetPlayerFeatureState(IPlayer player, string featureKey, FeatureState newState)
     {
-        var user = VipService.GetVipUser((long)player.SteamID);
+        var user = VipService.GetVipUser(player.SteamID);
         if (user == null) return;
 
         user.FeatureStates[featureKey] = newState;
@@ -157,14 +157,14 @@ public class VipCoreApiV1 : IVipCoreApiV1
         if (_serviceProvider == null) return;
         if (!player.IsValid) return;
 
-        var steamId = player.SteamID;
+        var accountId = player.SteamID;
         var name = player.Controller?.PlayerName ?? "unknown";
 
         Task.Run(async () =>
         {
             try
             {
-                await VipService.AddVip((long)steamId, name, group, time);
+                await VipService.AddVip(accountId, name, group, time);
 
                 // Validate player is still valid before loading
                 if (!player.IsValid) return;
@@ -172,7 +172,7 @@ public class VipCoreApiV1 : IVipCoreApiV1
 
                 // Validate player again before accessing SteamID
                 if (!player.IsValid) return;
-                var vipUser = VipService.GetVipUser((long)player.SteamID);
+                var vipUser = VipService.GetVipUser(player.SteamID);
                 if (vipUser != null)
                 {
                     _core.Scheduler.NextTick(() =>
@@ -187,7 +187,7 @@ public class VipCoreApiV1 : IVipCoreApiV1
             }
             catch (Exception ex)
             {
-                _core.Logger.LogWarning(ex, "[VIPCore] Failed to give temporary VIP to player {SteamId}", steamId);
+                _core.Logger.LogWarning(ex, "[VIPCore] Failed to give temporary VIP to player {SteamId}", accountId);
             }
         });
     }
@@ -197,12 +197,12 @@ public class VipCoreApiV1 : IVipCoreApiV1
         if (_serviceProvider == null) return;
         if (!IsClientVip(player)) return;
 
-        var steamId = player.SteamID;
+        var accountId = player.SteamID;
         var group = GetClientVipGroup(player);
 
         Task.Run(async () =>
         {
-            await VipService.RemoveVip((long)steamId);
+            await VipService.RemoveVip(accountId);
 
             _core.Scheduler.NextTick(() =>
             {
@@ -224,12 +224,12 @@ public class VipCoreApiV1 : IVipCoreApiV1
 
     public string GetClientVipGroup(IPlayer player)
     {
-        return VipService.GetVipUser((long)player.SteamID)?.group ?? string.Empty;
+        return VipService.GetVipUser(player.SteamID)?.group ?? string.Empty;
     }
 
     public string[] GetClientVipGroups(IPlayer player)
     {
-        var user = VipService.GetVipUser((long)player.SteamID);
+        var user = VipService.GetVipUser(player.SteamID);
         return user?.OwnedGroups.ToArray() ?? Array.Empty<string>();
     }
 
@@ -242,7 +242,7 @@ public class VipCoreApiV1 : IVipCoreApiV1
     {
         if (_serviceProvider == null) return default;
 
-        var user = VipService.GetVipUser((long)player.SteamID);
+        var user = VipService.GetVipUser(player.SteamID);
         if (user == null) return default;
 
         var groupName = GroupsConfig.Groups.Keys
