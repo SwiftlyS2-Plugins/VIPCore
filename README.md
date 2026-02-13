@@ -63,7 +63,6 @@ VIPCore uses two config files:
 
 | Setting | Default | Description |
 | :--- | :--- | :--- |
-| `Delay` | `2.0` | General delay value (seconds) used by VIPCore where applicable. |
 | `DatabaseConnection` | `"default"` | Database connection name from your SwiftlyS2 database configuration. |
 | `TimeMode` | `0` | Time unit for `vip_adduser` and management menus: `0=seconds`, `1=minutes`, `2=hours`, `3=days`. |
 | `VipLogging` | `true` | Enables debug logging related to VIP loading/feature initialization. |
@@ -73,7 +72,6 @@ VIPCore uses two config files:
 ```jsonc
 {
   "vip": {
-    "Delay": 2.0,
     "DatabaseConnection": "default",
     "TimeMode": 0,
     "VipLogging": true
@@ -133,6 +131,7 @@ This repository ships several optional VIP modules (each one is a standalone Swi
 | `VIP_Fov` | Field-of-view feature module |
 | `VIP_GoldMember` | Gold member group/feature module |
 | `VIP_Health` | Health-related feature module |
+| `VIP_Items` | Items feature module |
 | `VIP_KillScreen` | Kill screen feature module |
 | `VIP_NoFallDamage` | No fall damage feature module |
 | `VIP_SmokeColor` | Smoke color feature module |
