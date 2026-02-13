@@ -1,7 +1,7 @@
 <div align="center">
   <img src="https://pan.samyyc.dev/s/VYmMXE" />
   <h2><strong>VIP_Vampirism</strong></h2>
-  <h3>Gives VIP players lifesteal on damage dealt to enemies.</h3>
+  <h3>Gives VIP players lifesteal on damage dealt or health on kills.</h3>
 </div>
 
 <p align="center">
@@ -32,14 +32,20 @@ Add the vampirism feature to your `vip_groups.jsonc` file:
       "GOLD": {
         "Values": {
           "vip.vampirism": {
-            "Percent": 25.0  // Lifesteal percentage (e.g., 25.0 for 25%)
+            "GiveHealthMode": 0,    // 0 = OnDamage, 1 = OnKill
+            "HealthReturnMode": 0,  // 0 = Percent, 1 = Flat
+            "Percent": 25.0,        // Lifesteal percentage (0.0 to 100.0) - used when HealthReturnMode is 0
+            "Flat": 0               // Flat health amount - used when HealthReturnMode is 1
           }
         }
       },
       "SILVER": {
         "Values": {
           "vip.vampirism": {
-            "Percent": 15.0
+            "GiveHealthMode": 1,    // Heal on kill
+            "HealthReturnMode": 1,  // Flat health
+            "Percent": 0.0,
+            "Flat": 50              // Give 50 HP per kill
           }
         }
       }
@@ -52,7 +58,20 @@ Add the vampirism feature to your `vip_groups.jsonc` file:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `Percent` | float | 0.0 | Percentage of damage dealt to heal (0.0 to 100.0)
+| `GiveHealthMode` | int | 0 | When to give health: 0 = OnDamage, 1 = OnKill |
+| `HealthReturnMode` | int | 0 | How to calculate health: 0 = Percent, 1 = Flat |
+| `Percent` | float | 0.0 | Percentage of damage dealt to heal (0.0 to 100.0) - used when HealthReturnMode is 0 |
+| `Flat` | int | 0 | Flat health amount to restore - used when HealthReturnMode is 1 |
+
+### Mode Explanations
+
+**GiveHealthMode:**
+- `0` (OnDamage): Player heals based on damage dealt to enemies
+- `1` (OnKill): Player heals when they get a kill
+
+**HealthReturnMode:**
+- `0` (Percent): Heal amount is a percentage of damage dealt (only works with GiveHealthMode = OnDamage)
+- `1` (Flat): Heal a fixed amount of HP (works with GiveHealthMode = OnKill)
 
 ## Building
 
