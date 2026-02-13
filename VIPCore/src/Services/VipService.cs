@@ -38,11 +38,16 @@ public class VipService(
 
     public async Task LoadPlayer(IPlayer player)
     {
-        if (player.IsFakeClient) return;
+        await LoadPlayerWithExpiredInfo(player);
+    }
+
+    public async Task<string?> LoadPlayerWithExpiredInfo(IPlayer player)
+    {
+        if (player.IsFakeClient) return null;
 
         var allGroups = (await userRepository.GetUserGroupsAsync((long)player.SteamID, serverIdentifier.ServerId)).ToList();
 
-        if (allGroups.Count == 0) return;
+        if (allGroups.Count == 0) return null;
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var expiredGroups = allGroups.Where(u => u.expires != 0 && u.expires < now).ToList();
@@ -54,10 +59,18 @@ public class VipService(
             core.Logger.LogInformation("[VIPCore] VIP group '{Group}' expired for player {Name} ({SteamId})", expired.group, player.Controller.PlayerName, player.SteamID);
         }
 
-        if (validGroups.Count == 0) return;
+        if (validGroups.Count == 0)
+        {
+            _users.TryRemove(player.SteamID, out _);
+
+            if (expiredGroups.Count == 0) return null;
+
+            var expiredBest = ResolveHighestWeightGroup(expiredGroups);
+            return expiredBest?.group;
+        }
 
         var activeUser = ResolveHighestWeightGroup(validGroups);
-        if (activeUser == null) return;
+        if (activeUser == null) return null;
 
         var vipUser = new VipUser
         {
@@ -83,6 +96,8 @@ public class VipService(
         if (coreConfig.VipLogging)
             core.Logger.LogDebug("[VIPCore] Loaded VIP player {Name} ({SteamId}) with active group {Group} (owns: {OwnedGroups})",
                 player.Controller.PlayerName, player.SteamID, activeUser.group, string.Join(", ", vipUser.OwnedGroups));
+
+        return null;
     }
 
     private User? ResolveHighestWeightGroup(List<User> validGroups)

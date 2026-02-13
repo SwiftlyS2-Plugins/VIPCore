@@ -1,0 +1,39 @@
+﻿name: Bug Report
+description: Report a bug or issue
+title: "[BUG] "
+labels: ["bug", "needs-triage"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please provide enough information to understand the problem.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: e.g. v1.0.0 or latest commit
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      placeholder: What went wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Crash/Error Logs (optional)
+      render: text
+      placeholder: Paste logs here if available...
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional Info (optional)
+      placeholder: Anything else useful to mention?

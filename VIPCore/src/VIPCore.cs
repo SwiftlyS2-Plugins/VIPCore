@@ -28,6 +28,7 @@ public partial class VIPCore : BasePlugin
     private Cookies.Contract.IPlayerCookiesAPIv1? _playerCookiesApi;
     private IInterfaceManager? _interfaceManager;
     private CancellationTokenSource? _cookiesResolveRetryCts;
+    private CancellationTokenSource? _vipExpireCheckCts;
 
     private readonly VipCoreApiV1 _vipCoreApi;
 
@@ -73,7 +74,7 @@ public partial class VIPCore : BasePlugin
         {
             try
             {
-                await vipService.LoadPlayer(player);
+                var expiredGroup = await vipService.LoadPlayerWithExpiredInfo(player);
 
                 var vipUser = vipService.GetVipUser(steamId);
                 Core.Scheduler.NextTick(() =>
@@ -81,12 +82,40 @@ public partial class VIPCore : BasePlugin
                     if (!player.IsValid) return;
                     if (vipUser != null)
                     {
+                        var localizer = Core.Translation.GetPlayerLocalizer(player);
+
+                        if (vipUser.expires == 0)
+                        {
+                            player.SendMessage(MessageType.Chat, localizer["vip.Join.Permanent", vipUser.group]);
+                        }
+                        else
+                        {
+                            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                            var remainingSeconds = Math.Max(0, vipUser.expires - now);
+                            var remaining = TimeSpan.FromSeconds(remainingSeconds);
+                            var remainingText = remaining.TotalDays >= 1
+                                ? $"{(int)remaining.TotalDays}d {remaining.Hours}h"
+                                : remaining.TotalHours >= 1
+                                    ? $"{(int)remaining.TotalHours}h {remaining.Minutes}m"
+                                    : remaining.TotalMinutes >= 1
+                                        ? $"{(int)remaining.TotalMinutes}m"
+                                        : $"{remaining.Seconds}s";
+
+                            player.SendMessage(MessageType.Chat, localizer["vip.Join.Temporary", vipUser.group, remainingText]);
+                        }
+
                         if (_config?.VipLogging == true)
                             Core.Logger.LogDebug("[VIPCore] OnClientPutInServer: Raising PlayerLoaded for {Name} with group {Group}", player.Controller?.PlayerName ?? "unknown", vipUser.group);
                         _vipCoreApi.RaisePlayerLoaded(player, vipUser.group);
                     }
                     else
                     {
+                        if (!string.IsNullOrEmpty(expiredGroup))
+                        {
+                            var localizer = Core.Translation.GetPlayerLocalizer(player);
+                            player.SendMessage(MessageType.Chat, localizer["vip.Expired", expiredGroup]);
+                        }
+
                         if (_config?.VipLogging == true)
                             Core.Logger.LogDebug("[VIPCore] OnClientPutInServer: Player {Name} is not VIP, not raising PlayerLoaded", player.Controller?.PlayerName ?? "unknown");
                     }
@@ -97,6 +126,46 @@ public partial class VIPCore : BasePlugin
                 Core.Logger.LogError(ex, "[VIPCore] Failed to load player {SteamId} on connect.", steamId);
             }
         });
+    }
+
+    private void CheckOnlineVipExpirations()
+    {
+        var serviceProvider = _serviceProvider;
+        if (serviceProvider == null) return;
+
+        var vipService = serviceProvider.GetRequiredService<VipService>();
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        for (var i = 0; i < Core.PlayerManager.PlayerCap; i++)
+        {
+            var player = Core.PlayerManager.GetPlayer(i);
+            if (player == null || player.IsFakeClient || !player.IsValid) continue;
+
+            var vipUser = vipService.GetVipUser(player.SteamID);
+            if (vipUser == null) continue;
+            if (vipUser.expires == 0 || vipUser.expires > now) continue;
+
+            Task.Run(async () =>
+            {
+                try
+                {
+                    var expiredGroup = await vipService.LoadPlayerWithExpiredInfo(player);
+                    if (string.IsNullOrEmpty(expiredGroup))
+                        expiredGroup = vipUser.group;
+
+                    Core.Scheduler.NextTick(() =>
+                    {
+                        if (!player.IsValid) return;
+                        var localizer = Core.Translation.GetPlayerLocalizer(player);
+                        player.SendMessage(MessageType.Chat, localizer["vip.Expired", expiredGroup]);
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Core.Logger.LogError(ex, "[VIPCore] Failed to process online VIP expiry for {SteamId}", player.SteamID);
+                }
+            });
+        }
     }
 
     private void OnClientDisconnected(SwiftlyS2.Shared.Events.IOnClientDisconnectedEvent @event)
@@ -195,6 +264,9 @@ public partial class VIPCore : BasePlugin
             Core.Event.OnSteamAPIActivated -= OnSteamAPIActivated;
             Core.Event.OnClientPutInServer -= OnClientPutInServer;
             Core.Event.OnClientDisconnected -= OnClientDisconnected;
+
+            _vipExpireCheckCts?.Cancel();
+            _vipExpireCheckCts = null;
 
             if (_serviceProvider != null)
             {
@@ -340,6 +412,9 @@ public partial class VIPCore : BasePlugin
             _cookiesResolveRetryCts = Core.Scheduler.RepeatBySeconds(2f, () => TryResolveCookiesApi());
         }
 
+        _vipExpireCheckCts?.Cancel();
+        _vipExpireCheckCts = Core.Scheduler.RepeatBySeconds(30f, () => CheckOnlineVipExpirations());
+
         Core.Event.OnClientPutInServer += OnClientPutInServer;
         Core.Event.OnClientDisconnected += OnClientDisconnected;
 
@@ -353,6 +428,9 @@ public partial class VIPCore : BasePlugin
         Core.Event.OnSteamAPIActivated -= OnSteamAPIActivated;
         Core.Event.OnClientPutInServer -= OnClientPutInServer;
         Core.Event.OnClientDisconnected -= OnClientDisconnected;
+
+        _vipExpireCheckCts?.Cancel();
+        _vipExpireCheckCts = null;
 
         var serviceProvider = _serviceProvider;
         if (serviceProvider == null)
