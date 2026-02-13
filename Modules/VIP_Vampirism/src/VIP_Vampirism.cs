@@ -97,18 +97,28 @@ public partial class VIP_Vampirism : BasePlugin
 
         if (config.GiveHealthMode != GiveHealthMode.OnDamage) return HookResult.Continue;
 
-        float percent = config.Percent;
+        int heal = 0;
 
-        if (percent <= 0.0f) return HookResult.Continue;
+        if (config.HealthReturnMode == HealthMode.Percent)
+        {
+            float percent = config.Percent;
+            if (percent <= 0.0f) return HookResult.Continue;
+
+             heal = (int)MathF.Round(dmgHealth * (percent / 100.0f));
+            if (heal <= 0) return HookResult.Continue;
+        }
+
+        if (config.HealthReturnMode == HealthMode.Flat)
+        {
+            heal = config.Flat;
+            if (heal <= 0) return HookResult.Continue;
+        }
 
         var controller = attacker.Controller as CCSPlayerController;
         if (controller == null || !controller.IsValid) return HookResult.Continue;
 
         var pawn = controller.PlayerPawn.Value;
         if (pawn == null || !pawn.IsValid) return HookResult.Continue;
-
-        var heal = (int)MathF.Round(dmgHealth * (percent / 100.0f));
-        if (heal <= 0) return HookResult.Continue;
 
         var newHealth = pawn.Health + heal;
         if (newHealth <= 0)
