@@ -54,43 +54,58 @@ Console usage: SwiftlyS2 console commands are typically exposed with the `sw_` p
 
 ## Configuration
 
-VIPCore uses two config files:
+VIPCore uses two configuration files located in your SwiftlyS2 configs folder.
 
-- `config.jsonc` (section: `vip`)
-- `vip_groups.jsonc` (section: `vip_groups`)
+### Main Settings — `config.jsonc`
 
-### `config.jsonc` (`vip`)
-
-| Setting | Default | Description |
-| :--- | :--- | :--- |
-| `DatabaseConnection` | `"default"` | Database connection name from your SwiftlyS2 database configuration. |
-| `TimeMode` | `0` | Time unit for `vip_adduser` and management menus: `0=seconds`, `1=minutes`, `2=hours`, `3=days`. |
-| `VipLogging` | `true` | Enables debug logging related to VIP loading/feature initialization. |
-
-#### Example
+Controls how VIPCore operates on your server.
 
 ```jsonc
 {
   "vip": {
-    "DatabaseConnection": "default",
-    "TimeMode": 0,
-    "VipLogging": true
+    "Delay": 2.0,                      // Wait time in seconds before applying VIP features
+    "DatabaseConnection": "default",   // Database connection name (from SwiftlyS2 database config)
+    "TimeMode": 3,                     // Time unit for VIP duration: 0=seconds, 1=minutes, 2=hours, 3=days
+    "VipLogging": true                 // Enable detailed logs (useful for troubleshooting)
   }
 }
 ```
 
-### `vip_groups.jsonc` (`vip_groups`)
+**Settings explained:**
 
-Define groups and the features they grant.
+| Setting | What it does | Recommended |
+| :--- | :--- | :--- |
+| `Delay` | How many seconds to wait after spawn before giving VIP features | `1.0` to `5.0` |
+| `DatabaseConnection` | Which database to use for storing VIP data (must exist in SwiftlyS2 config) | `"default"` |
+| `TimeMode` | Time format when adding VIPs via commands | `3` (days) |
+| `VipLogging` | Show detailed logs for debugging VIP system issues | `true` for testing, `false` for production |
 
-- A group is a named entry under `vip_groups.Groups` (e.g. `VIP`, `MVIP`).
-- Each group can optionally define a `Weight` (integer). If a player has multiple valid VIP groups, VIPCore selects the active group with the highest `Weight`.
-- Features are defined under `Values`.
-- A feature value can be:
-  - `1` / `0` (simple enabled/disabled defaults for toggle features)
-  - An object (feature-specific settings, defined by the module)
+---
 
-#### Example
+### VIP Groups — `vip_groups.jsonc`
+
+Defines VIP groups and what features each group receives.
+
+**Simple example** (on/off features only):
+
+```jsonc
+{
+  "vip_groups": {
+    "Groups": {
+      "VIP": {
+        "Weight": 10,          // Priority (higher number = more important)
+        "Values": {
+          "vip.zeus": 1,       // 1 = enabled, 0 = disabled
+          "vip.bhop": 1,
+          "vip.antiflash": 1
+        }
+      }
+    }
+  }
+}
+```
+
+**Advanced example** (features with custom settings):
 
 ```jsonc
 {
@@ -99,15 +114,31 @@ Define groups and the features they grant.
       "VIP": {
         "Weight": 10,
         "Values": {
-          "vip.zeus": 1,
-          "vip.armor": { "Armor": 100 },
-          "vip.bhop": { "Timer": 5.0, "MaxSpeed": 300.0 }
+          "vip.armor": {
+            "Armor": 100       // Give 100 armor points on spawn
+          },
+          "vip.health": {
+            "Health": 120      // Give 120 HP on spawn
+          },
+          "vip.bhop": {
+            "Timer": 5.0,      // Activate bhop 5 seconds after round start
+            "MaxSpeed": 300.0  // Maximum bhop speed
+          }
         }
       },
-      "MVIP": {
-        "Weight": 20,
+      "PREMIUM": {
+        "Weight": 20,          // Higher weight = overrides "VIP" if player has both
         "Values": {
-          "vip.armor": { "Armor": 50 }
+          "vip.armor": {
+            "Armor": 150
+          },
+          "vip.health": {
+            "Health": 150
+          },
+          "vip.bhop": {
+            "Timer": 3.0,
+            "MaxSpeed": 350.0
+          }
         }
       }
     }
@@ -115,29 +146,43 @@ Define groups and the features they grant.
 }
 ```
 
+**How it works:**
+
+- **Group names** (`"VIP"`, `"PREMIUM"`, etc.) can be anything — use them when adding VIPs via commands
+- **Weight** = priority level. If a player has multiple VIP groups, the highest weight wins
+- **Values** = features granted to this group
+- **Feature keys** (`"vip.armor"`, `"vip.bhop"`, etc.) must match installed module names
+
+**Feature value types:**
+
+| Type | Example | Use when |
+| :--- | :--- | :--- |
+| Simple toggle | `"vip.zeus": 1` | Feature has no extra settings (just on/off) |
+| With settings | `"vip.armor": { "Armor": 100 }` | Feature needs customization (amounts, timers, etc.) |
+
 ## Included Modules
 
 This repository ships several optional VIP modules (each one is a standalone SwiftlyS2 plugin that registers features into VIPCore):
 
 | Module | Description |
 | :--- | :--- |
-| `VIP_AntiFlash` | Anti-flash feature module |
-| `VIP_Armor` | Armor feature module |
-| `VIP_Bhop` | Bunnyhop-related feature module |
-| `VIP_DoubleJump` | Double jump feature module |
-| `VIP_FastDefuse` | Fast defuse feature module |
-| `VIP_FastPlant` | Fast plant feature module |
-| `VIP_FastReload` | Fast reload feature module |
-| `VIP_Fov` | Field-of-view feature module |
-| `VIP_GoldMember` | Gold member group/feature module |
-| `VIP_Health` | Health-related feature module |
-| `VIP_Items` | Items feature module |
-| `VIP_KillScreen` | Kill screen feature module |
-| `VIP_NoFallDamage` | No fall damage feature module |
-| `VIP_SmokeColor` | Smoke color feature module |
-| `VIP_Tag` | Tag feature module |
-| `VIP_Vampirism` | Vampirism feature module |
-| `VIP_Zeus` | Zeus feature module |
+| `VIP_AntiFlash` | Gives flashbang immunity to VIP players |
+| `VIP_Armor` | Gives armor and helmet on spawn |
+| `VIP_Bhop` | Enables bunnyhop (auto-jump) for players |
+| `VIP_DoubleJump` | Allows players to jump twice in mid-air |
+| `VIP_FastDefuse` | Reduces bomb defuse time |
+| `VIP_FastPlant` | Reduces bomb plant time |
+| `VIP_FastReload` | Gives instant weapon reloads |
+| `VIP_Fov` | Allows customizable field of view |
+| `VIP_GoldMember` | Auto-grants VIP to players with specific name tags |
+| `VIP_Health` | Gives increased health on spawn |
+| `VIP_Items` | Gives configured weapons/items on spawn |
+| `VIP_KillScreen` | Applies screen effect on kills |
+| `VIP_NoFallDamage` | Prevents fall damage |
+| `VIP_SmokeColor` | Custom smoke grenade colors |
+| `VIP_Tag` | Custom clan tags for players |
+| `VIP_Vampirism` | Heals player by percentage of damage dealt |
+| `VIP_Zeus` | Gives Zeus x27 taser on spawn |
 
 ## Creating VIP Module Plugins
 
