@@ -3,6 +3,8 @@ using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.SchemaDefinitions;
+using SwiftlyS2.Shared.Players;
+using SwiftlyS2.Shared.Events;
 using VIPCore.Contract;
 using Microsoft.Extensions.Logging;
 
@@ -14,6 +16,7 @@ public partial class VIP_FastReload : BasePlugin
     private const string FeatureKey = "vip.fastreload";
 
     private readonly Dictionary<uint, long> _lastAutoReloadMs = new();
+    private readonly bool[] _fastReloadEnabled = new bool[65];
 
     private IVipCoreApiV1? _vipApi;
     private bool _isFeatureRegistered;
@@ -39,10 +42,24 @@ public partial class VIP_FastReload : BasePlugin
 
     public override void Load(bool hotReload)
     {
+        Core.Event.OnClientConnected += OnClientConnected;
+        Core.Event.OnClientDisconnected += OnClientDisconnected;
         Core.GameEvent.HookPost<EventWeaponReload>(OnWeaponReload);
         Core.GameEvent.HookPost<EventWeaponFire>(OnWeaponFire);
         Core.GameEvent.HookPost<EventWeaponFireOnEmpty>(OnWeaponFireOnEmpty);
         RegisterVipFeaturesWhenReady();
+    }
+
+    private void OnClientConnected(IOnClientConnectedEvent args)
+    {
+        if (args.PlayerId >= 0 && args.PlayerId < _fastReloadEnabled.Length)
+            _fastReloadEnabled[args.PlayerId] = false;
+    }
+
+    private void OnClientDisconnected(IOnClientDisconnectedEvent args)
+    {
+        if (args.PlayerId >= 0 && args.PlayerId < _fastReloadEnabled.Length)
+            _fastReloadEnabled[args.PlayerId] = false;
     }
 
     private HookResult OnWeaponFireOnEmpty(EventWeaponFireOnEmpty @event)
@@ -50,10 +67,9 @@ public partial class VIP_FastReload : BasePlugin
         if (_vipApi == null) return HookResult.Continue;
 
         var player = @event.UserIdPlayer;
-        if (player == null || player.IsFakeClient || !player.IsValid) return HookResult.Continue;
-
-        if (!_vipApi.IsClientVip(player)) return HookResult.Continue;
-        if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled) return HookResult.Continue;
+        if (player == null || !player.IsValid || player.IsFakeClient) return HookResult.Continue;
+        if (player.PlayerID < 0 || player.PlayerID >= _fastReloadEnabled.Length) return HookResult.Continue;
+        if (!_fastReloadEnabled[player.PlayerID]) return HookResult.Continue;
 
         var controller = player.Controller;
         if (controller == null || !controller.IsValid) return HookResult.Continue;
@@ -69,13 +85,10 @@ public partial class VIP_FastReload : BasePlugin
 
     private HookResult OnWeaponFire(EventWeaponFire @event)
     {
-        if (_vipApi == null) return HookResult.Continue;
-
         var player = @event.UserIdPlayer;
-        if (player == null || player.IsFakeClient || !player.IsValid) return HookResult.Continue;
-
-        if (!_vipApi.IsClientVip(player)) return HookResult.Continue;
-        if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled) return HookResult.Continue;
+        if (player == null || !player.IsValid || player.IsFakeClient) return HookResult.Continue;
+        if (player.PlayerID < 0 || player.PlayerID >= _fastReloadEnabled.Length) return HookResult.Continue;
+        if (!_fastReloadEnabled[player.PlayerID]) return HookResult.Continue;
 
         var controller = player.Controller;
         if (controller == null || !controller.IsValid) return HookResult.Continue;
@@ -114,13 +127,10 @@ public partial class VIP_FastReload : BasePlugin
 
     private HookResult OnWeaponReload(EventWeaponReload @event)
     {
-        if (_vipApi == null) return HookResult.Continue;
-
         var player = @event.UserIdPlayer;
-        if (player == null || player.IsFakeClient || !player.IsValid) return HookResult.Continue;
-
-        if (!_vipApi.IsClientVip(player)) return HookResult.Continue;
-        if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled) return HookResult.Continue;
+        if (player == null || !player.IsValid || player.IsFakeClient) return HookResult.Continue;
+        if (player.PlayerID < 0 || player.PlayerID >= _fastReloadEnabled.Length) return HookResult.Continue;
+        if (!_fastReloadEnabled[player.PlayerID]) return HookResult.Continue;
 
         ApplyFastReload(player);
 
@@ -143,11 +153,34 @@ public partial class VIP_FastReload : BasePlugin
 
         _vipApi.RegisterFeature(FeatureKey, FeatureType.Toggle, (player, state) =>
         {
-            return;
+            Core.Scheduler.NextTick(() =>
+            {
+                if (player.PlayerID >= 0 && player.PlayerID < _fastReloadEnabled.Length)
+                    _fastReloadEnabled[player.PlayerID] = state == FeatureState.Enabled;
+            });
         },
         displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.fastreload"]);
 
         _isFeatureRegistered = true;
+
+        _vipApi.PlayerLoaded += OnPlayerLoaded;
+        _vipApi.PlayerRemoved += OnPlayerRemoved;
+    }
+
+    private void OnPlayerLoaded(IPlayer player, string group)
+    {
+        if (_vipApi == null) return;
+        if (player.PlayerID >= 0 && player.PlayerID < _fastReloadEnabled.Length)
+        {
+            var state = _vipApi.GetPlayerFeatureState(player, FeatureKey);
+            _fastReloadEnabled[player.PlayerID] = state == FeatureState.Enabled;
+        }
+    }
+
+    private void OnPlayerRemoved(IPlayer player, string group)
+    {
+        if (player.PlayerID >= 0 && player.PlayerID < _fastReloadEnabled.Length)
+            _fastReloadEnabled[player.PlayerID] = false;
     }
 
     private void ApplyFastReload(SwiftlyS2.Shared.Players.IPlayer player)
@@ -227,9 +260,14 @@ public partial class VIP_FastReload : BasePlugin
 
     public override void Unload()
     {
+        Core.Event.OnClientConnected -= OnClientConnected;
+        Core.Event.OnClientDisconnected -= OnClientDisconnected;
+
         if (_vipApi != null)
         {
             _vipApi.OnCoreReady -= RegisterVipFeatures;
+            _vipApi.PlayerLoaded -= OnPlayerLoaded;
+            _vipApi.PlayerRemoved -= OnPlayerRemoved;
             if (_isFeatureRegistered)
                 _vipApi.UnregisterFeature(FeatureKey);
         }

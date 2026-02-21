@@ -35,6 +35,8 @@ public partial class VIP_DoubleJump : BasePlugin {
   }
 
   private readonly PlayerState[] _states = new PlayerState[65];
+  private readonly List<IPlayer> _cachedPlayers = new List<IPlayer>(64);
+  private bool _playerListDirty = true;
 
   public VIP_DoubleJump(ISwiftlyCore core) : base(core)
   {
@@ -156,12 +158,14 @@ public partial class VIP_DoubleJump : BasePlugin {
   {
     if (args.PlayerId < 0 || args.PlayerId >= _states.Length) return;
     _states[args.PlayerId] = new PlayerState();
+    _playerListDirty = true;
   }
 
   private void OnClientDisconnected(IOnClientDisconnectedEvent args)
   {
     if (args.PlayerId < 0 || args.PlayerId >= _states.Length) return;
     _states[args.PlayerId] = new PlayerState();
+    _playerListDirty = true;
   }
 
   private void OnClientKeyStateChanged(IOnClientKeyStateChangedEvent @event)
@@ -181,26 +185,30 @@ public partial class VIP_DoubleJump : BasePlugin {
 
   private void OnTick()
   {
-    if (_vipApi == null || !_vipApi.IsCoreReady()) return;
-
-    var players = Core.PlayerManager.GetAllPlayers();
-    foreach (var player in players)
+    if (_playerListDirty)
     {
-      if (player == null || player.IsFakeClient || !player.IsValid) continue;
-      if (player.PlayerID < 0 || player.PlayerID >= _states.Length) continue;
+      _cachedPlayers.Clear();
+      _cachedPlayers.AddRange(Core.PlayerManager.GetAllPlayers());
+      _playerListDirty = false;
+    }
+
+    for (int i = 0; i < _cachedPlayers.Count; i++)
+    {
+      var player = _cachedPlayers[i];
+      if (!player.IsValid || player.IsFakeClient) continue;
+      
+      var playerId = player.PlayerID;
+      if (playerId < 0 || playerId >= _states.Length) continue;
+
+      var s = _states[playerId];
+      if (!s.Enabled || s.MaxJumps <= 1) continue;
+
+      var jumpJustPressed = s.PendingJumpPress;
+      s.PendingJumpPress = false;
 
       var pawn = player.Pawn;
       if (pawn is not { IsValid: true }) continue;
       if (pawn.LifeState != (byte)LifeState_t.LIFE_ALIVE) continue;
-
-      if (!_vipApi.IsClientVip(player)) continue;
-      if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled) continue;
-
-      var s = _states[player.PlayerID];
-      if (s.MaxJumps <= 1) continue;
-
-      var jumpJustPressed = s.PendingJumpPress;
-      s.PendingJumpPress = false;
 
       var flags = pawn.Flags;
       var isGrounded = (flags & 1u) != 0;
@@ -213,12 +221,10 @@ public partial class VIP_DoubleJump : BasePlugin {
       }
       else if (wasGrounded)
       {
-        // Left the ground: count the initial (normal) jump.
         if (s.JumpsUsed < 1)
           s.JumpsUsed = 1;
       }
 
-      // Extra jump requires a second Space press while already airborne.
       if (jumpJustPressed
           && !isGrounded
           && !wasGrounded

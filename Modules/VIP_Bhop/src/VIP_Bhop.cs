@@ -18,6 +18,8 @@ public class VIP_Bhop : BasePlugin
     private IVipCoreApiV1? _vipApi;
     private bool _isFeatureRegistered;
     private readonly BhopSettings[] _bhopSettings = new BhopSettings[65];
+    private readonly List<IPlayer> _cachedPlayers = new List<IPlayer>(64);
+    private bool _playerListDirty = true;
 
     private IConVar<bool>? _autobunnyhopping;
     private IConVar<bool>? _enablebunnyhopping;
@@ -90,6 +92,7 @@ public class VIP_Bhop : BasePlugin
     {
         if (args.PlayerId < 0 || args.PlayerId >= _bhopSettings.Length) return;
         _bhopSettings[args.PlayerId] = new BhopSettings();
+        _playerListDirty = true;
         UpdateGlobalBhopState();
     }
 
@@ -97,42 +100,53 @@ public class VIP_Bhop : BasePlugin
     {
         if (args.PlayerId < 0 || args.PlayerId >= _bhopSettings.Length) return;
         _bhopSettings[args.PlayerId] = new BhopSettings();
+        _playerListDirty = true;
         UpdateGlobalBhopState();
     }
 
     private void OnTick()
     {
-        if (_autobunnyhopping == null || _enablebunnyhopping == null) return;
-
-        foreach (var player in Core.PlayerManager.GetAllPlayers())
+        if (_playerListDirty)
         {
-            if (player == null || !player.IsValid || player.IsFakeClient) continue;
-            if (player.PlayerID < 0 || player.PlayerID >= _bhopSettings.Length) continue;
+            _cachedPlayers.Clear();
+            _cachedPlayers.AddRange(Core.PlayerManager.GetAllPlayers());
+            _playerListDirty = false;
+        }
 
-            var settings = _bhopSettings[player.PlayerID];
-            var entitled = settings.Active && settings.Enabled;
+        for (int i = 0; i < _cachedPlayers.Count; i++)
+        {
+            var player = _cachedPlayers[i];
+            if (!player.IsValid || player.IsFakeClient) continue;
+            
+            var playerId = player.PlayerID;
+            if (playerId < 0 || playerId >= _bhopSettings.Length) continue;
 
-            SetBunnyhop(player, entitled);
+            var settings = _bhopSettings[playerId];
+            if (!settings.Active || !settings.Enabled) continue;
+            if (settings.MaxSpeed <= 0) continue;
+            if (!player.IsAlive) continue;
 
-            if (entitled && player.IsAlive)
-                ClampPlayerSpeed(player, settings.MaxSpeed);
+            ClampPlayerSpeed(player, settings.MaxSpeed);
         }
     }
 
     private static void ClampPlayerSpeed(IPlayer player, float maxSpeed)
     {
-        if (maxSpeed <= 0) return;
-
         var pawn = player.PlayerPawn;
         if (pawn == null || !pawn.IsValid) return;
 
         var velocity = pawn.AbsVelocity;
-        var horizontalSpeed = Math.Sqrt((velocity.X * velocity.X) + (velocity.Y * velocity.Y));
-        if (horizontalSpeed <= maxSpeed || horizontalSpeed <= 0.001f) return;
+        var vx = velocity.X;
+        var vy = velocity.Y;
+        var horizontalSpeedSqr = (vx * vx) + (vy * vy);
+        var maxSpeedSqr = maxSpeed * maxSpeed;
 
+        if (horizontalSpeedSqr <= maxSpeedSqr || horizontalSpeedSqr <= 0.001f) return;
+
+        var horizontalSpeed = Math.Sqrt(horizontalSpeedSqr);
         var ratio = (float)(maxSpeed / horizontalSpeed);
-        pawn.AbsVelocity.X *= ratio;
-        pawn.AbsVelocity.Y *= ratio;
+        velocity.X = vx * ratio;
+        velocity.Y = vy * ratio;
         pawn.VelocityUpdated();
     }
 
@@ -217,6 +231,7 @@ public class VIP_Bhop : BasePlugin
 
         settings.Active = false;
         UpdateGlobalBhopState();
+        UpdatePlayerBunnyhop(player);
 
         if (!_vipApi.IsClientVip(player))
             return;
@@ -245,7 +260,7 @@ public class VIP_Bhop : BasePlugin
                 });
                 settings.Active = true;
                 UpdateGlobalBhopState();
-                SetBunnyhop(player, true);
+                UpdatePlayerBunnyhop(player);
             });
         }
         else
@@ -253,16 +268,29 @@ public class VIP_Bhop : BasePlugin
             // Activate immediately if timer is 0
             settings.Active = true;
             UpdateGlobalBhopState();
-            SetBunnyhop(player, true);
+            UpdatePlayerBunnyhop(player);
         }
+    }
+
+    private void UpdatePlayerBunnyhop(IPlayer player)
+    {
+        if (player.PlayerID < 0 || player.PlayerID >= _bhopSettings.Length) return;
+        var settings = _bhopSettings[player.PlayerID];
+        SetBunnyhop(player, settings.Active && settings.Enabled);
     }
 
     private void SetBunnyhop(IPlayer player, bool value)
     {
         if (player.PlayerID < 0 || player.PlayerID >= _bhopSettings.Length) return;
 
+        var settings = _bhopSettings[player.PlayerID];
+        if (settings.HasReplicatedOnce && settings.LastReplicatedValue == value) return;
+
         _enablebunnyhopping?.ReplicateToClient(player.PlayerID, value);
         _autobunnyhopping?.ReplicateToClient(player.PlayerID, value);
+
+        settings.HasReplicatedOnce = true;
+        settings.LastReplicatedValue = value;
     }
 
     private void RegisterVipFeatures()
@@ -276,6 +304,7 @@ public class VIP_Bhop : BasePlugin
                 if (player.PlayerID < 0 || player.PlayerID >= _bhopSettings.Length) return;
                 _bhopSettings[player.PlayerID].Enabled = state == FeatureState.Enabled;
                 UpdateGlobalBhopState();
+                UpdatePlayerBunnyhop(player);
             });
         },
         displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.bhop"]);
@@ -294,6 +323,8 @@ public class VIP_Bhop : BasePlugin
             var config = _vipApi.GetFeatureValue<BhopConfig>(player, FeatureKey);
             _bhopSettings[player.PlayerID].Timer = config?.Timer ?? 5.0f;
             _bhopSettings[player.PlayerID].MaxSpeed = config?.MaxSpeed ?? 300.0f;
+
+            UpdatePlayerBunnyhop(player);
         };
     }
 
@@ -326,6 +357,8 @@ public class BhopSettings
 {
     [JsonIgnore] public bool Active { get; set; }
     [JsonIgnore] public bool Enabled { get; set; }
+    [JsonIgnore] public bool HasReplicatedOnce { get; set; }
+    [JsonIgnore] public bool LastReplicatedValue { get; set; }
     public float Timer { get; set; } = 5.0f;
     public float MaxSpeed { get; set; } = 300.0f;
 }
