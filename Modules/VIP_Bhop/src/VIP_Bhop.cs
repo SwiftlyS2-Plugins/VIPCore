@@ -70,7 +70,8 @@ public class VIP_Bhop : BasePlugin
         Core.Event.OnClientConnected += OnClientConnected;
         Core.Event.OnClientDisconnected += OnClientDisconnected;
         Core.Event.OnTick += OnTick;
-        Core.GameEvent.HookPre<EventRoundStart>(OnRoundStart);
+        Core.GameEvent.HookPre<EventRoundFreezeEnd>(OnRoundFreezeEnd);
+        Core.GameEvent.HookPre<EventPlayerSpawn>(OnPlayerSpawn);
 
         RegisterVipFeaturesWhenReady();
     }
@@ -176,55 +177,84 @@ public class VIP_Bhop : BasePlugin
         }
     }
 
-    private HookResult OnRoundStart(EventRoundStart @event)
+    private HookResult OnRoundFreezeEnd(EventRoundFreezeEnd @event)
     {
+        var players = Core.PlayerManager.GetAllPlayers();
+        foreach (var player in players)
+        {
+            if (player == null || player.IsFakeClient || !player.IsValid) continue;
+            EnableBhopForPlayer(player);
+        }
+
+        return HookResult.Continue;
+    }
+
+    private HookResult OnPlayerSpawn(EventPlayerSpawn @event)
+    {
+        var player = @event.UserIdPlayer;
+        if (player == null || player.IsFakeClient || !player.IsValid) return HookResult.Continue;
+
+        // Give a slight delay to allow the player to fully spawn
         Core.Scheduler.DelayBySeconds(0.1f, () =>
         {
-            var players = Core.PlayerManager.GetAllPlayers();
-            foreach (var player in players)
-            {
-                if (player == null || player.IsFakeClient || !player.IsValid) continue;
-                if (_vipApi == null)
-                    continue;
-
-                if (player.PlayerID < 0 || player.PlayerID >= _bhopSettings.Length) continue;
-
-                var settings = _bhopSettings[player.PlayerID];
-                settings.Active = false;
-                UpdateGlobalBhopState();
-
-                if (!_vipApi.IsClientVip(player))
-                    continue;
-
-                var featureState = _vipApi.GetPlayerFeatureState(player, FeatureKey);
-
-                settings.Enabled = featureState == FeatureState.Enabled;
-                if (!settings.Enabled) continue;
-
-                var timer = settings.Timer;
-                var maxSpeed = settings.MaxSpeed;
-
-                Core.Scheduler.NextTick(() =>
-                {
-                    var localizer = Core.Translation.GetPlayerLocalizer(player);
-                    player.SendMessage(MessageType.Chat, localizer["bhop.TimeToActivation", timer]);
-                });
-
-                Core.Scheduler.DelayBySeconds(timer, () =>
-                {
-                    Core.Scheduler.NextTick(() =>
-                    {
-                        var localizer = Core.Translation.GetPlayerLocalizer(player);
-                        player.SendMessage(MessageType.Chat, localizer["bhop.Activated"]);
-                    });
-                    settings.Active = true;
-                    UpdateGlobalBhopState();
-                    SetBunnyhop(player, true);
-                });
-            }
+            EnableBhopForPlayer(player);
         });
 
         return HookResult.Continue;
+    }
+
+    private void EnableBhopForPlayer(IPlayer player)
+    {
+        if (_vipApi == null)
+            return;
+
+        if (player.PlayerID < 0 || player.PlayerID >= _bhopSettings.Length) return;
+
+        var settings = _bhopSettings[player.PlayerID];
+        
+        // If they already have active bhop, no need to do anything
+        if (settings.Active) return;
+
+        settings.Active = false;
+        UpdateGlobalBhopState();
+
+        if (!_vipApi.IsClientVip(player))
+            return;
+
+        var featureState = _vipApi.GetPlayerFeatureState(player, FeatureKey);
+
+        settings.Enabled = featureState == FeatureState.Enabled;
+        if (!settings.Enabled) return;
+
+        var timer = settings.Timer;
+
+        if (timer > 0)
+        {
+            Core.Scheduler.NextTick(() =>
+            {
+                var localizer = Core.Translation.GetPlayerLocalizer(player);
+                player.SendMessage(MessageType.Chat, localizer["bhop.TimeToActivation", timer]);
+            });
+
+            Core.Scheduler.DelayBySeconds(timer, () =>
+            {
+                Core.Scheduler.NextTick(() =>
+                {
+                    var localizer = Core.Translation.GetPlayerLocalizer(player);
+                    player.SendMessage(MessageType.Chat, localizer["bhop.Activated"]);
+                });
+                settings.Active = true;
+                UpdateGlobalBhopState();
+                SetBunnyhop(player, true);
+            });
+        }
+        else
+        {
+            // Activate immediately if timer is 0
+            settings.Active = true;
+            UpdateGlobalBhopState();
+            SetBunnyhop(player, true);
+        }
     }
 
     private void SetBunnyhop(IPlayer player, bool value)
