@@ -160,7 +160,27 @@ public class VipService(
 
     public async Task AddVip(long accountId, string name, string group, int time)
     {
-        var expires = CalculateExpires(time);
+        var existingUser = await userRepository.GetUserAsync(accountId, serverIdentifier.ServerId);
+        long expires;
+
+        if (time <= 0)
+        {
+            expires = 0; // Permanent
+        }
+        else if (existingUser != null && existingUser.group.Equals(group, StringComparison.OrdinalIgnoreCase) && existingUser.expires > 0)
+        {
+            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var remaining = existingUser.expires > now ? existingUser.expires - now : 0;
+            
+            // CalculateExpires(time) returns the absolute time in the future. 
+            // We need to add the remaining seconds to that.
+            expires = CalculateExpires(time) + remaining;
+        }
+        else
+        {
+            expires = CalculateExpires(time);
+        }
+
         var user = new User
         {
             account_id = accountId,
