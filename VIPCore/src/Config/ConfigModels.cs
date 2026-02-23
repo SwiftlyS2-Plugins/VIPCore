@@ -7,6 +7,7 @@ public class VipConfig
     public string DatabaseConnection { get; set; } = "default";
     public int TimeMode { get; set; } = 0;
     public bool VipLogging { get; set; } = true;
+    public int? ServerId { get; set; } = null;
 }
 
 public class GroupsConfig
