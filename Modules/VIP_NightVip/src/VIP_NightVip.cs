@@ -58,10 +58,10 @@ public partial class VIP_NightVip : BasePlugin {
 
   public override void Load(bool hotReload) {
     Core.Configuration
-      .InitializeJsonWithModel<VIP_NightVipConfig>("NightVip.jsonc", "NightVip")
+      .InitializeJsonWithModel<VIP_NightVipConfig>("config.jsonc", "NightVip")
       .Configure(builder =>
       {
-        var configPath = Core.Configuration.GetConfigPath("NightVip.jsonc");
+        var configPath = Core.Configuration.GetConfigPath("config.jsonc");
         builder.AddJsonFile(configPath, optional: false, reloadOnChange: true);
       });
 

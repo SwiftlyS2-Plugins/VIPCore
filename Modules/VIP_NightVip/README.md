@@ -13,17 +13,19 @@ This module grants temporary VIP status to all players on the server during a sp
 
 ## Expected Configuration
 
-This module uses a standalone configuration file located at `configs/plugins/VIPCore/Modules/NightVip.jsonc`.
+This module uses a standalone configuration file located at `configs/plugins/VIPCore/Modules/config.jsonc`.
 It will be generated automatically on the first run.
 
 ```jsonc
 {
-  "VIPGroup": "VIP",                                        // The VIP group to assign players to
-  "PluginStartTime": "20:00:00",                            // Time to start giving VIP
-  "PluginEndTime": "08:00:00",                              // Time to stop giving VIP
-  "Timezone": "UTC",                                        // Timezone for the check
-  "CheckTimer": 10.0,                                       // How often to check for players (in seconds)
-  "Tag": "[NightVIP]"
+  "NightVip": {
+    "VIPGroup": "VIP",                                        // The VIP group to assign players to
+    "PluginStartTime": "20:00:00",                            // Time to start giving VIP
+    "PluginEndTime": "08:00:00",                              // Time to stop giving VIP
+    "Timezone": "UTC",                                        // Timezone for the check
+    "CheckTimer": 10.0,                                       // How often to check for players (in seconds)
+    "Tag": "[NightVIP]"
+  }
 }
 ```
 
