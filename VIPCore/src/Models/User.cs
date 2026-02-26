@@ -25,6 +25,7 @@ public class VipServer
 {
     [System.ComponentModel.DataAnnotations.Key]
     public long serverId { get; set; }
+    public string? GUID { get; set; }
     public required string serverIp { get; set; }
     public int port { get; set; }
 }

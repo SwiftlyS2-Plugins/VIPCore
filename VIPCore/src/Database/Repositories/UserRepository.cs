@@ -19,6 +19,13 @@ public interface IUserRepository
     Task<bool> ServerExistsAsync(string ip, int port);
     Task AddServerAsync(VipServer server);
     Task<long> GetServerIdAsync(string ip, int port);
+    Task<VipServer?> GetServerByGuidAsync(string guid);
+    Task<VipServer?> GetServerByIpPortAsync(string ip, int port);
+    Task<VipServer?> GetServerByIdAsync(long serverId);
+    Task UpdateServerAsync(VipServer server);
+    Task<bool> TryMoveServerIdAsync(long fromServerId, long toServerId);
+    Task<bool> TryInsertServerWithIdAsync(VipServer server);
+    Task ClearGuidFromOtherServersAsync(string guid, long keepServerId);
     Task<IEnumerable<User>> GetAllUsersAsync(long serverId);
 }
 
@@ -108,6 +115,76 @@ public class UserRepository(DatabaseConnectionFactory connectionFactory) : IUser
         var servers = await db.SelectAsync<VipServer>(s => s.serverIp == ip && s.port == port);
         var server = servers.FirstOrDefault();
         return server?.serverId ?? 0;
+    }
+
+    public async Task<VipServer?> GetServerByGuidAsync(string guid)
+    {
+        using var db = connectionFactory.CreateConnection();
+        var servers = await db.SelectAsync<VipServer>(s => s.GUID == guid);
+        return servers.FirstOrDefault();
+    }
+
+    public async Task<VipServer?> GetServerByIpPortAsync(string ip, int port)
+    {
+        using var db = connectionFactory.CreateConnection();
+        var servers = await db.SelectAsync<VipServer>(s => s.serverIp == ip && s.port == port);
+        return servers.FirstOrDefault();
+    }
+
+    public async Task<VipServer?> GetServerByIdAsync(long serverId)
+    {
+        using var db = connectionFactory.CreateConnection();
+        var server = await db.GetAsync<VipServer>(serverId);
+        return server;
+    }
+
+    public async Task UpdateServerAsync(VipServer server)
+    {
+        using var db = connectionFactory.CreateConnection();
+        await db.UpdateAsync(server);
+    }
+
+    public async Task<bool> TryMoveServerIdAsync(long fromServerId, long toServerId)
+    {
+        if (fromServerId <= 0 || toServerId <= 0 || fromServerId == toServerId)
+            return true;
+
+        using var db = connectionFactory.CreateConnection();
+        try
+        {
+            var rows = await db.ExecuteAsync(
+                "UPDATE vip_servers SET serverId = @ToId WHERE serverId = @FromId",
+                new { ToId = toServerId, FromId = fromServerId });
+            return rows > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> TryInsertServerWithIdAsync(VipServer server)
+    {
+        using var db = connectionFactory.CreateConnection();
+        try
+        {
+            var rows = await db.ExecuteAsync(
+                "INSERT INTO vip_servers (serverId, GUID, serverIp, port) VALUES (@serverId, @GUID, @serverIp, @port)",
+                server);
+            return rows > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task ClearGuidFromOtherServersAsync(string guid, long keepServerId)
+    {
+        using var db = connectionFactory.CreateConnection();
+        await db.ExecuteAsync(
+            "UPDATE vip_servers SET GUID = NULL WHERE GUID = @Guid AND serverId <> @KeepId",
+            new { Guid = guid, KeepId = keepServerId });
     }
 
     public async Task<IEnumerable<User>> GetAllUsersAsync(long serverId)
