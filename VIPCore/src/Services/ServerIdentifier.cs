@@ -2,8 +2,10 @@ using SwiftlyS2.Shared;
 using VIPCore.Database;
 using VIPCore.Database.Repositories;
 using VIPCore.Models;
+using VIPCore.Config;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace VIPCore.Services;
 
@@ -12,6 +14,7 @@ public class ServerIdentifier
     private readonly ISwiftlyCore _core;
     private readonly DatabaseConnectionFactory _connectionFactory;
     private readonly IUserRepository _userRepository;
+    private readonly IOptionsMonitor<VipConfig> _coreConfigMonitor;
 
     private long _serverId;
     private string? _serverIp;
@@ -23,17 +26,28 @@ public class ServerIdentifier
     public int ServerPort => _serverPort;
     public bool IsInitialized => _initialized;
 
-    public ServerIdentifier(ISwiftlyCore core, DatabaseConnectionFactory connectionFactory, IUserRepository userRepository)
+    public ServerIdentifier(ISwiftlyCore core, DatabaseConnectionFactory connectionFactory, IUserRepository userRepository, IOptionsMonitor<VipConfig> coreConfigMonitor)
     {
         _core = core;
         _connectionFactory = connectionFactory;
         _userRepository = userRepository;
+        _coreConfigMonitor = coreConfigMonitor;
     }
 
     public async Task InitializeAsync()
     {
         try
         {
+            if (_coreConfigMonitor.CurrentValue.ServerId.HasValue)
+            {
+                _serverId = _coreConfigMonitor.CurrentValue.ServerId.Value;
+                _serverIp = "configured";
+                _serverPort = 0;
+                _initialized = true;
+                _core.Logger.LogInformation("[VIPCore] Server identified using configured ID {ServerId}.", _serverId);
+                return;
+            }
+
             _serverIp = _core.Engine.ServerIP;
             var hostport = _core.ConVar.Find<int>("hostport");
 
