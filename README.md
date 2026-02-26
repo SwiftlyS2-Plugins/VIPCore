@@ -182,6 +182,7 @@ This repository ships several optional VIP modules (each one is a standalone Swi
 | `VIP_Items` | Gives configured weapons/items on spawn |
 | `VIP_KillScreen` | Applies screen effect on kills |
 | `VIP_Money` | Gives money to VIP players |
+| `VIP_NightVip` | Grants VIP access during specific hours |
 | `VIP_NoFallDamage` | Prevents fall damage |
 | `VIP_RainbowModel` | Cycles player model render color (rainbow effect) |
 | `VIP_SmokeColor` | Custom smoke grenade colors |
