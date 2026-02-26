@@ -65,6 +65,11 @@ public class CookieService(ISwiftlyCore core)
         {
             value = _playerCookiesApi.Get<T>((long)steamId, key);
         }
+        catch (System.Collections.Generic.KeyNotFoundException)
+        {
+            // Cookie doesn't exist yet, return default without warning
+            return default!;
+        }
         catch (Exception ex)
         {
             core.Logger.LogWarning(ex, "[VIPCore] Cookies API Get failed.");

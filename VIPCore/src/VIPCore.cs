@@ -19,7 +19,7 @@ using System.IO;
 
 namespace VIPCore;
 
-[PluginMetadata(Id = "VIPCore", Version = "1.0.1-beta", Name = "VIPCore", Author = "aga", Description = "Core VIP management plugin ported to SwiftlyS2.")]
+[PluginMetadata(Id = "VIPCore", Version = "1.0.1", Name = "VIPCore", Author = "aga", Description = "Core VIP management plugin ported to SwiftlyS2.")]
 public partial class VIPCore : BasePlugin
 {
     private VipConfig? _config;
