@@ -16,6 +16,8 @@ public partial class VIP_Armor : BasePlugin {
 
   private IVipCoreApiV1? _vipApi;
   private bool _isFeatureRegistered;
+  private CCSGameRulesProxy? _gameRulesProxy;
+  private int _maxRounds = 30;
 
   public VIP_Armor(ISwiftlyCore core) : base(core)
   {
@@ -42,7 +44,26 @@ public partial class VIP_Armor : BasePlugin {
     }
   }
 
+  private void RefreshGameRulesAndMaxRounds()
+  {
+    _gameRulesProxy = Core.EntitySystem.GetAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
+
+    var maxRoundsCvar = Core.ConVar.Find<int>("mp_maxrounds");
+    if (maxRoundsCvar != null && maxRoundsCvar.Value > 0)
+      _maxRounds = maxRoundsCvar.Value;
+  }
+
   public override void Load(bool hotReload) {
+    Core.Event.OnMapLoad += _ =>
+    {
+      Core.Scheduler.DelayBySeconds(1.0f, () => RefreshGameRulesAndMaxRounds());
+    };
+
+    if (hotReload)
+    {
+      RefreshGameRulesAndMaxRounds();
+    }
+
     Core.GameEvent.HookPost<EventPlayerSpawn>(OnPlayerSpawn);
     RegisterVipFeaturesWhenReady();
   }
@@ -103,6 +124,24 @@ public partial class VIP_Armor : BasePlugin {
     if (player.IsFakeClient || !player.IsValid) return;
     if (!_vipApi.IsClientVip(player)) return;
     if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled) return;
+
+    if (_gameRulesProxy != null && _gameRulesProxy.GameRules != null && !_gameRulesProxy.GameRules.WarmupPeriod)
+    {
+      var gameRules = _gameRulesProxy.GameRules;
+      var totalRounds = gameRules.TotalRoundsPlayed;
+
+      var maxRounds = _maxRounds;
+      var cvar = Core.ConVar.Find<int>("mp_maxrounds");
+      if (cvar != null && cvar.Value > 0)
+        maxRounds = cvar.Value;
+
+      var half = maxRounds / 2;
+
+      var isPistolRound = totalRounds == 0 || (half > 0 && totalRounds > 0 && (totalRounds % half) == 0);
+
+      if (isPistolRound)
+        return;
+    }
 
     var armorValue = 0;
     try
