@@ -7,6 +7,7 @@ namespace VIPCore;
 public sealed partial class VIPCore
 {
     [Command("vip_manage", permission: "vipcore.manage")]
+    [CommandAlias("vipmanage", registerRaw: true)]
     public void OnManageCommand(ICommandContext context)
     {
         if (!context.IsSentByPlayer)
