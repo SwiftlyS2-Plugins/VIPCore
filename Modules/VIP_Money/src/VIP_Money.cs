@@ -170,23 +170,10 @@ public partial class VIP_Money : BasePlugin {
         maxMoney = mpMaxMoneyCvar.Value;
       }
 
-      if (moneyValue.Contains("++"))
+      var rawValue = moneyValue.Contains("++") ? moneyValue.Replace("++", "").Trim() : moneyValue.Trim();
+      if (int.TryParse(rawValue, out int moneyToAdd) && moneyToAdd > 0)
       {
-          var parts = moneyValue.Split("++");
-          if (parts.Length > 1 && int.TryParse(parts[1], out int moneyToAdd))
-          {
-              if (moneyServices.Account + moneyToAdd > maxMoney)
-                  moneyServices.Account = maxMoney;
-              else
-                  moneyServices.Account += moneyToAdd;
-          }
-      }
-      else
-      {
-          if (int.TryParse(moneyValue, out int moneySet))
-          {
-              moneyServices.Account = moneySet > maxMoney ? maxMoney : moneySet;
-          }
+          moneyServices.Account = Math.Min(moneyServices.Account + moneyToAdd, maxMoney);
       }
 
       // We do not have Utilities.SetStateChanged in SwiftlyS2, updating the property should be enough or handled by the engine natively.

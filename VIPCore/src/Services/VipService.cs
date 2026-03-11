@@ -7,6 +7,7 @@ using VIPCore.Config;
 
 using System.Collections.Concurrent;
 
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -128,7 +129,7 @@ public class VipService(
             foreach (var state in user.FeatureStates)
             {
                 var feature = featureService.GetFeature(state.Key);
-                if (feature?.FeatureType == FeatureType.Toggle)
+                if (feature?.FeatureType == FeatureType.Toggle && state.Value != FeatureState.NoAccess)
                 {
                     cookieService.SetCookie(player.SteamID, state.Key, (int)state.Value);
                 }
@@ -147,14 +148,20 @@ public class VipService(
 
         foreach (var feature in featureService.GetRegisteredFeatures())
         {
-            if (!group.Values.ContainsKey(feature.Key))
+            var hasFeature = group.ValuesSection != null
+                ? group.ValuesSection.GetChildren().Any(c => c.Key.Equals(feature.Key, StringComparison.OrdinalIgnoreCase))
+                : group.Values.ContainsKey(feature.Key);
+
+            if (!hasFeature)
             {
                 user.FeatureStates[feature.Key] = FeatureState.NoAccess;
                 continue;
             }
 
             var cookieVal = cookieService.GetCookie<int?>((ulong)user.account_id, feature.Key);
-            user.FeatureStates[feature.Key] = cookieVal.HasValue ? (FeatureState)cookieVal.Value : FeatureState.Enabled;
+            var restoredState = cookieVal.HasValue ? (FeatureState)cookieVal.Value : FeatureState.Enabled;
+            if (restoredState == FeatureState.NoAccess) restoredState = FeatureState.Enabled;
+            user.FeatureStates[feature.Key] = restoredState;
         }
     }
 
@@ -218,14 +225,20 @@ public class VipService(
             if (groupName == null || !groupsConfig.Groups.TryGetValue(groupName, out var group))
                 continue;
 
-            if (!group.Values.ContainsKey(featureKey))
+            var hasFeatureKey = group.ValuesSection != null
+                ? group.ValuesSection.GetChildren().Any(c => c.Key.Equals(featureKey, StringComparison.OrdinalIgnoreCase))
+                : group.Values.ContainsKey(featureKey);
+
+            if (!hasFeatureKey)
             {
                 user.FeatureStates[featureKey] = FeatureState.NoAccess;
                 continue;
             }
 
             var cookieVal = cookieService.GetCookie<int?>((ulong)user.account_id, featureKey);
-            user.FeatureStates[featureKey] = cookieVal.HasValue ? (FeatureState)cookieVal.Value : FeatureState.Enabled;
+            var restoredState = cookieVal.HasValue ? (FeatureState)cookieVal.Value : FeatureState.Enabled;
+            if (restoredState == FeatureState.NoAccess) restoredState = FeatureState.Enabled;
+            user.FeatureStates[featureKey] = restoredState;
 
             if (coreConfig.VipLogging)
                 core.Logger.LogDebug("[VIPCore] Initialized late-registered feature '{Feature}' for loaded player {AccountId} (Group: {Group}, State: {State})",

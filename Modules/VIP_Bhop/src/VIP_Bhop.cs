@@ -145,9 +145,8 @@ public class VIP_Bhop : BasePlugin
 
         var horizontalSpeed = Math.Sqrt(horizontalSpeedSqr);
         var ratio = (float)(maxSpeed / horizontalSpeed);
-        velocity.X = vx * ratio;
-        velocity.Y = vy * ratio;
-        pawn.VelocityUpdated();
+
+        pawn.Teleport(null, null, new SwiftlyS2.Shared.Natives.Vector(vx * ratio, vy * ratio, velocity.Z));
     }
 
     private void UpdateGlobalBhopState()

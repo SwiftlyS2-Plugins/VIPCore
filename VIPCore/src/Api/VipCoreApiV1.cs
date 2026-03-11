@@ -252,8 +252,9 @@ public class VipCoreApiV1 : IVipCoreApiV1
 
         if (group.ValuesSection == null) return default;
 
-        var featureSection = group.ValuesSection.GetSection(featureKey);
-        if (!featureSection.Exists()) return default;
+        var featureSection = group.ValuesSection.GetChildren()
+            .FirstOrDefault(c => c.Key.Equals(featureKey, StringComparison.OrdinalIgnoreCase));
+        if (featureSection == null) return default;
 
         return featureSection.Get<T>() ?? new T();
     }

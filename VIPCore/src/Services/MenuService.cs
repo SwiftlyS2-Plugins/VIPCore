@@ -5,6 +5,7 @@ using SwiftlyS2.Shared.Translation;
 using SwiftlyS2.Core.Menus.OptionsBase;
 using VIPCore.Contract;
 using VIPCore.Config;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -52,14 +53,14 @@ public class MenuService(ISwiftlyCore core, FeatureService featureService, Cooki
         var optionIndex = 0;
         foreach (var feature in features)
         {
-            var hasConfig = groupConfig.Values.TryGetValue(feature.Key, out var val);
-            var valStr = val?.ToString();
-            var isEmpty = string.IsNullOrEmpty(valStr);
-            
-            if (config.VipLogging)
-                core.Logger.LogDebug("[VIPCore] Menu: Feature '{Key}' - InConfig: {InConfig}, Val: '{Val}', IsEmpty: {IsEmpty}", feature.Key, hasConfig, valStr ?? "null", isEmpty);
+            var hasConfig = groupConfig.ValuesSection != null
+                ? groupConfig.ValuesSection.GetChildren().Any(c => c.Key.Equals(feature.Key, StringComparison.OrdinalIgnoreCase))
+                : groupConfig.Values.ContainsKey(feature.Key);
 
-            if (!hasConfig || isEmpty)
+            if (config.VipLogging)
+                core.Logger.LogDebug("[VIPCore] Menu: Feature '{Key}' - InConfig: {InConfig}", feature.Key, hasConfig);
+
+            if (!hasConfig)
                 continue;
 
             if (!user.FeatureStates.TryGetValue(feature.Key, out var state))

@@ -309,15 +309,15 @@ public sealed partial class VIPCore : BasePlugin
                     {
                         var groupName = groupSectionCast.Key;
                         var valuesSection = groupSectionCast.GetSection("Values");
-                        var values = valuesSection.Get<Dictionary<string, object>>();
 
-                        if (values != null && !foundGroups.ContainsKey(groupName))
+                        if (valuesSection.Exists() && !foundGroups.ContainsKey(groupName))
                         {
                             var weight = 0;
                             var weightStr = groupSectionCast.GetSection("Weight").Value;
                             if (!string.IsNullOrEmpty(weightStr))
                                 int.TryParse(weightStr, out weight);
 
+                            var values = valuesSection.Get<Dictionary<string, object>>() ?? new Dictionary<string, object>();
                             foundGroups[groupName] = new VipGroup { Weight = weight, Values = values, ValuesSection = valuesSection };
                         }
                     }
