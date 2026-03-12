@@ -186,6 +186,7 @@ This repository ships several optional VIP modules (each one is a standalone Swi
 | `VIP_NoFallDamage` | Prevents fall damage |
 | `VIP_RainbowModel` | Cycles player model render color (rainbow effect) |
 | `VIP_SmokeColor` | Custom smoke grenade colors |
+| `VIP_Speed` | Modifies player movement speed |
 | `VIP_Tag` | Custom clan tags for players |
 | `VIP_Test` | Provides players with a timed trial VIP |
 | `VIP_Vampirism` | Heals player by percentage of damage dealt |
