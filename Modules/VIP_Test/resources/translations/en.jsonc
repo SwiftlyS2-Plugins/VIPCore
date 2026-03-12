@@ -1,0 +1,7 @@
+{
+  "vip.AlreadyVipPrivileges": "[red]You already have VIP privileges![default]",
+  "viptest.YouCanNoLongerTakeTheVip": "You have used all your trial VIP attempts.",
+  "viptest.RetakenThrough": "You can take trial VIP again in [red]{0}[default].",
+  "viptest.SuccessfullyPassed": "You have received trial VIP for [green]{0}[default]!",
+  "viptest.CurrentlyActive": "Your trial VIP is currently active for another [green]{0}[default]. Type [green]!vip[default] to use its features."
+}

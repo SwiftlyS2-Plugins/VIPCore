@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="VIPCore.Contract/VIPCore.Contract.csproj" />
   <Project Path="VIPCore/VIPCore.csproj" />
+  <Project Path="Modules/VIP_Test/VIP_Test.csproj" />
 </Solution>
