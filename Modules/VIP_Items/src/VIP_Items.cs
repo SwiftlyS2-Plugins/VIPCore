@@ -6,6 +6,7 @@ using SwiftlyS2.Shared.Misc;
 using VIPCore.Contract;
 using SwiftlyS2.Shared.GameEvents;
 using SwiftlyS2.Shared.Players;
+using SwiftlyS2.Shared.SchemaDefinitions;
 
 namespace VIP_Items;
 
@@ -16,6 +17,9 @@ public partial class VIP_Items : BasePlugin
 
     private IVipCoreApiV1? _vipApi;
     private bool _isFeatureRegistered;
+
+    private CCSGameRulesProxy? _gameRulesProxy;
+    private int _maxRounds = 30;
 
     public VIP_Items(ISwiftlyCore core) : base(core)
     {
@@ -44,7 +48,26 @@ public partial class VIP_Items : BasePlugin
 
     public override void Load(bool hotReload)
     {
+        Core.Event.OnMapLoad += _ =>
+        {
+            Core.Scheduler.DelayBySeconds(1.0f, () => RefreshGameRulesAndMaxRounds());
+        };
+
+        if (hotReload)
+        {
+            RefreshGameRulesAndMaxRounds();
+        }
+
         RegisterVipFeaturesWhenReady();
+    }
+
+    private void RefreshGameRulesAndMaxRounds()
+    {
+        _gameRulesProxy = Core.EntitySystem.GetAllEntitiesByDesignerName<CCSGameRulesProxy>("cs_gamerules").FirstOrDefault();
+
+        var maxRoundsCvar = Core.ConVar.Find<int>("mp_maxrounds");
+        if (maxRoundsCvar != null && maxRoundsCvar.Value > 0)
+            _maxRounds = maxRoundsCvar.Value;
     }
 
     private void RegisterVipFeaturesWhenReady()
@@ -84,6 +107,9 @@ public partial class VIP_Items : BasePlugin
         var config = _vipApi.GetFeatureValue<ItemsConfig>(player, FeatureKey);
         if (config == null) return HookResult.Continue;
 
+        if (!config.GiveOnPistolRounds && IsPistolRound())
+            return HookResult.Continue;
+
         List<string> weaponsList = [];
 
         if (player.PlayerPawn.Team == Team.CT)
@@ -97,6 +123,22 @@ public partial class VIP_Items : BasePlugin
         return HookResult.Continue;
     }
 
+    private bool IsPistolRound()
+    {
+        if (_gameRulesProxy == null || _gameRulesProxy.GameRules == null) return false;
+        if (_gameRulesProxy.GameRules.WarmupPeriod) return false;
+
+        var totalRounds = _gameRulesProxy.GameRules.TotalRoundsPlayed;
+
+        var maxRounds = _maxRounds;
+        var cvarMaxRounds = Core.ConVar.Find<int>("mp_maxrounds");
+        if (cvarMaxRounds != null && cvarMaxRounds.Value > 0)
+            maxRounds = cvarMaxRounds.Value;
+
+        var half = maxRounds / 2;
+        return totalRounds == 0 || (half > 0 && totalRounds > 0 && (totalRounds % half) == 0);
+    }
+
     private void GivePlayerWeapons(IPlayer? player, List<string> weaponsList)
     {
         if (player == null
@@ -106,17 +148,23 @@ public partial class VIP_Items : BasePlugin
 
         if (weaponsList.Count == 0) return;
 
+        var existingWeapons = new HashSet<string>(
+            player.PlayerPawn.WeaponServices.MyValidWeapons
+                .Select(w => w.DesignerName)
+                .Where(n => !string.IsNullOrWhiteSpace(n)),
+            StringComparer.OrdinalIgnoreCase
+        );
+
         foreach (var weapon in weaponsList)
         {
-            var userWeapons = player.PlayerPawn.WeaponServices.MyValidWeapons.ToList();
-            foreach(var item in userWeapons)
-            {
-                if (item.DesignerName == weapon)
-                {
-                    return;
-                }
-            }
+            if (string.IsNullOrWhiteSpace(weapon))
+                continue;
+
+            if (existingWeapons.Contains(weapon))
+                continue;
+
             player.PlayerPawn.ItemServices.GiveItem(weapon);
+            existingWeapons.Add(weapon);
         }
     }
 
@@ -133,6 +181,7 @@ public partial class VIP_Items : BasePlugin
 
 public class ItemsConfig
 {
+    public bool GiveOnPistolRounds { get; set; } = true;
     public List<string> CT { get; set; } = new List<string>();
     public List<string> T { get; set; } = new List<string>();
 }

@@ -32,6 +32,7 @@ Add the items feature to your `vip_groups.jsonc` file:
       "GOLD": {
         "Values": {
           "vip.items": {
+            "GiveOnPistolRounds": true,
             "CT": [
                 "weapon_smokegrenade",
 			    "weapon_flashbang",
@@ -58,7 +59,9 @@ Add the items feature to your `vip_groups.jsonc` file:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `Weapons` | array | [] | List of weapon/item class names to give on spawn |
+| `GiveOnPistolRounds` | bool | true | If false, items will NOT be given on pistol rounds (first round of the match and first round of the second half) |
+| `CT` | array | [] | List of weapon/item class names to give to CT on spawn |
+| `T` | array | [] | List of weapon/item class names to give to T on spawn |
 
 ### Weapon/Item Examples
 
@@ -92,8 +95,9 @@ Common weapon and item class names you can use:
 ### Features
 
 - **Automatic Weapon Distribution**: Weapons are given automatically when a VIP player spawns
-- **Duplicate Prevention**: The plugin checks if a player already has a weapon before giving it
+- **Duplicate Prevention**: The plugin checks if a player already has an item before giving it again
 - **Per-Group Configuration**: Each VIP group can have its own custom weapon list
+- **Pistol Round Control**: You can disable giving items on pistol rounds via `GiveOnPistolRounds`
 
 ## Building
 
