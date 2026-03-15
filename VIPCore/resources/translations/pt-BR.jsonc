@@ -4,6 +4,8 @@
   "vip.WelcomeToTheServer": "Olá, [blue]{0}[default]! Você é um jogador VIP.",
   "vip.Expires": "Seu status [blue]{0}[default] expira em [blue]{1}.",
   "vip.Expired": "Seu status [blue]{0}[default] expirou.",
+  "vip.Join.Permanent": "Você possui VIP [blue]{0}[default] permanentemente. Use [blue]!vip[default] para ver os privilégios.",
+  "vip.Join.Temporary": "Você possui VIP [blue]{0}[default] por [blue]{1}[default]. Use [blue]!vip[default] para ver os privilégios.",
   "vip.NoAccess": "Você não tem acesso a este comando!",
   "vip.AlreadyVipPrivileges": "Você já possui privilégios VIP.",
   "chat.Enabled": "[green]Ativado[default]",
