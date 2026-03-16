@@ -52,28 +52,11 @@ jobs:
           VIPCORE_PROJECT="./VIPCore/VIPCore.csproj"
           MODULE_PROJECTS=$(find ./Modules -maxdepth 2 -name "*.csproj" -type f | sort)
 
-          echo "Cloning Cookies repo"
-          git clone https://github.com/SwiftlyS2-Plugins/Cookies.git _cookies
-          COOKIES_CONTRACT_PROJECT="./_cookies/Cookies.Contract/Cookies.Contract.csproj"
-          COOKIES_PROJECT="./_cookies/Cookies/Cookies.csproj"
-
           echo "Building contract (produces DLL + local nupkg): $CONTRACT_PROJECT"
           dotnet restore "$CONTRACT_PROJECT" \
             --source "$LOCAL_NUGET_SOURCE" \
             --source "https://api.nuget.org/v3/index.json"
           dotnet build "$CONTRACT_PROJECT" -c Release
-
-          echo "Building Cookies.Contract: $COOKIES_CONTRACT_PROJECT"
-          dotnet restore "$COOKIES_CONTRACT_PROJECT" \
-            --source "$LOCAL_NUGET_SOURCE" \
-            --source "https://api.nuget.org/v3/index.json"
-          dotnet build "$COOKIES_CONTRACT_PROJECT" -c Release
-
-          echo "Publishing Cookies: $COOKIES_PROJECT"
-          dotnet restore "$COOKIES_PROJECT" \
-            --source "$LOCAL_NUGET_SOURCE" \
-            --source "https://api.nuget.org/v3/index.json"
-          dotnet publish "$COOKIES_PROJECT" -c Release
 
           echo "Publishing VIPCore: $VIPCORE_PROJECT"
           dotnet restore "$VIPCORE_PROJECT" \
@@ -114,7 +97,6 @@ jobs:
           rm -rf release-staging release-artifacts
           mkdir -p release-staging/VIPCore/VIPCore
           mkdir -p release-staging/Modules/Modules
-          mkdir -p release-staging/Cookies/Cookies
           mkdir -p release-artifacts
 
           VIPCORE_PUBLISH_DIR="./VIPCore/build/publish/VIPCore"
@@ -124,14 +106,6 @@ jobs:
           fi
 
           cp -R "$VIPCORE_PUBLISH_DIR/." "release-staging/VIPCore/VIPCore/"
-
-          COOKIES_PUBLISH_DIR="./_cookies/Cookies/build/publish/Cookies"
-          if [ ! -d "$COOKIES_PUBLISH_DIR" ]; then
-            echo "::error::Cookies publish directory not found: $COOKIES_PUBLISH_DIR"
-            exit 1
-          fi
-
-          cp -R "$COOKIES_PUBLISH_DIR/." "release-staging/Cookies/Cookies/"
 
           # Copy each module publish directory into Modules/<ModuleName>
           # Match only the immediate child of publish/ (the module root), not deeper subdirectories
@@ -150,17 +124,13 @@ jobs:
 
           echo "=== Staged VIPCore contents ==="
           find release-staging/VIPCore -maxdepth 3 -type f | head -30
-          echo "=== Staged Cookies contents ==="
-          find release-staging/Cookies -maxdepth 3 -type f | head -20
           echo "=== Staged Modules contents ==="
           find release-staging/Modules -maxdepth 4 -type f | head -50
 
           (cd release-staging/VIPCore && zip -r "../../release-artifacts/VIPCore-v${VERSION}.zip" "VIPCore" > /dev/null)
-          (cd release-staging/Cookies && zip -r "../../release-artifacts/Cookies-v${VERSION}.zip" "Cookies" > /dev/null)
           (cd release-staging/Modules && zip -r "../../release-artifacts/Modules-v${VERSION}.zip" "Modules" > /dev/null)
 
           echo "vipcore_zip=release-artifacts/VIPCore-v${VERSION}.zip" >> $GITHUB_OUTPUT
-          echo "cookies_zip=release-artifacts/Cookies-v${VERSION}.zip" >> $GITHUB_OUTPUT
           echo "modules_zip=release-artifacts/Modules-v${VERSION}.zip" >> $GITHUB_OUTPUT
 
       - name: Determine release tag
@@ -246,7 +216,6 @@ jobs:
             --notes "${{ steps.changelog.outputs.body }}" \
             $PRERELEASE_FLAG \
             "${{ steps.zip.outputs.vipcore_zip }}" \
-            "${{ steps.zip.outputs.cookies_zip }}" \
             "${{ steps.zip.outputs.modules_zip }}"
 
           echo "Release $TAG created successfully!"
