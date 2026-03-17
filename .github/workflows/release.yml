@@ -25,11 +25,11 @@ jobs:
       - name: Extract version from PluginMetadata
         id: version
         run: |
-          # Find Version = "x.y.z" in any .cs file
-          VERSION=$(grep -roh 'Version *= *"[^"]*"' --include="*.cs" | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          # Read Version from the PluginMetadata attribute in VIPCore.cs
+          VERSION=$(grep -oh 'Version *= *"[^"]*"' ./VIPCore/src/VIPCore.cs | head -1 | sed 's/.*"\(.*\)".*/\1/')
 
           if [ -z "$VERSION" ]; then
-            echo "::error::Could not find PluginMetadata Version"
+            echo "::error::Could not find PluginMetadata Version in VIPCore/src/VIPCore.cs"
             exit 1
           fi
 
