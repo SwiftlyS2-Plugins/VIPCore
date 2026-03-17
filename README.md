@@ -172,6 +172,7 @@ This repository ships several optional VIP modules (each one is a standalone Swi
 | `VIP_AntiFlash` | Gives flashbang immunity to VIP players |
 | `VIP_Armor` | Gives armor and helmet on spawn |
 | `VIP_Bhop` | Enables bunnyhop (auto-jump) for players |
+| `VIP_ChatColor` | Colored chat names for VIP players |
 | `VIP_DoubleJump` | Allows players to jump twice in mid-air |
 | `VIP_FastDefuse` | Reduces bomb defuse time |
 | `VIP_FastPlant` | Reduces bomb plant time |
