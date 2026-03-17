@@ -18,6 +18,8 @@
   "manage.SelectPlayer": "[[blue]Add VIP - Select Player[default]]",
   "manage.SelectGroup": "[[blue]Add VIP - Select Group for {0}[default]]",
   "manage.SelectDuration": "[[blue]Add VIP - Duration ({0}) for {1}[default]]",
+  "manage.VipGroups": "[[blue]VIP Groups[default]]",
+  "manage.GroupEntry": "{0} ({1} players)",
   "manage.ManageUsersList": "[[blue]Manage VIP Users[default]]",
   "manage.NoVipUsers": "No VIP users found.",
   "manage.UserEntry": "{0} ({1}) [{2}]",

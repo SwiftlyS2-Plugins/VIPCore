@@ -33,6 +33,7 @@ public class MenuService(ISwiftlyCore core, FeatureService featureService, Cooki
 
         var builder = core.MenusAPI.CreateBuilder();
         builder.Design.SetMenuTitle(title);
+        builder.SetPlayerFrozen(config.FreezeMenu);
         
         var groupName = groupsConfig.Groups.Keys.FirstOrDefault(k => k.Equals(user.group, StringComparison.OrdinalIgnoreCase));
         if (groupName == null || !groupsConfig.Groups.TryGetValue(groupName, out var groupConfig))

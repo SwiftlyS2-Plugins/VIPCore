@@ -42,6 +42,7 @@ public class ManageMenuService(
     {
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
+        builder.SetPlayerFrozen(coreConfig.FreezeAdminMenu);
         builder.Design.SetMenuTitle(localizer["manage.Title"]);
 
         var addOption = new ButtonMenuOption(localizer["manage.AddVipUser"]);
@@ -63,7 +64,7 @@ public class ManageMenuService(
                     {
                         var users = await userRepository.GetAllUsersAsync(serverIdentifier.ServerId);
                         var userList = users.ToList();
-                        core.Scheduler.NextTick(() => OpenManageUsersListMenu(args.Player, userList));
+                        core.Scheduler.NextTick(() => OpenManageGroupsMenu(args.Player, userList));
                     }
                     catch (Exception ex)
                     {
@@ -85,6 +86,7 @@ public class ManageMenuService(
     {
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
+        builder.SetPlayerFrozen(coreConfig.FreezeAdminMenu);
         builder.Design.SetMenuTitle(localizer["manage.SelectPlayer"]);
 
         for (var i = 0; i < core.PlayerManager.PlayerCap; i++)
@@ -112,6 +114,7 @@ public class ManageMenuService(
     {
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
+        builder.SetPlayerFrozen(coreConfig.FreezeAdminMenu);
         builder.Design.SetMenuTitle(localizer["manage.SelectGroup", playerName]);
 
         foreach (var groupName in groupsConfig.Groups.Keys)
@@ -134,6 +137,7 @@ public class ManageMenuService(
     {
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
+        builder.SetPlayerFrozen(coreConfig.FreezeAdminMenu);
 
         var timeModeLabel = localizer[GetTimeModeKey(coreConfig.TimeMode)];
         builder.Design.SetMenuTitle(localizer["manage.SelectDuration", timeModeLabel, playerName]);
@@ -231,10 +235,36 @@ public class ManageMenuService(
         core.MenusAPI.OpenMenuForPlayer(admin, menu);
     }
 
+    private void OpenManageGroupsMenu(IPlayer admin, List<User> users)
+    {
+        var localizer = core.Translation.GetPlayerLocalizer(admin);
+        var builder = core.MenusAPI.CreateBuilder();
+        builder.SetPlayerFrozen(coreConfig.FreezeAdminMenu);
+        builder.Design.SetMenuTitle(localizer["manage.VipGroups"]);
+
+        foreach (var groupName in groupsConfig.Groups.Keys)
+        {
+            var group = groupName;
+            var groupUsers = users.Where(u => string.Equals(u.group, group, StringComparison.OrdinalIgnoreCase)).ToList();
+            var playerCount = groupUsers.Select(u => u.account_id).Distinct().Count();
+            var option = new ButtonMenuOption(localizer["manage.GroupEntry", group, playerCount]);
+            option.Click += async (sender, args) =>
+            {
+                core.Scheduler.NextTick(() => OpenManageUsersListMenu(args.Player, groupUsers));
+                await ValueTask.CompletedTask;
+            };
+            builder.AddOption(option);
+        }
+
+        var menu = builder.Build();
+        core.MenusAPI.OpenMenuForPlayer(admin, menu);
+    }
+
     private void OpenManageUsersListMenu(IPlayer admin, List<User> users)
     {
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
+        builder.SetPlayerFrozen(coreConfig.FreezeAdminMenu);
         builder.Design.SetMenuTitle(localizer["manage.ManageUsersList"]);
 
         if (users.Count == 0)
@@ -267,6 +297,7 @@ public class ManageMenuService(
     {
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
+        builder.SetPlayerFrozen(coreConfig.FreezeAdminMenu);
         var first = playerUsers.First();
 
         builder.Design.SetMenuTitle(localizer["manage.UserDetail", first.name]);
@@ -332,6 +363,7 @@ public class ManageMenuService(
     {
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
+        builder.SetPlayerFrozen(coreConfig.FreezeAdminMenu);
 
         var expiresText = user.expires == 0 ? localizer["manage.Permanent"] : DateTimeOffset.FromUnixTimeSeconds(user.expires).ToString("yyyy-MM-dd HH:mm");
         builder.Design.SetMenuTitle(localizer["manage.UserDetail", $"{user.name} - {user.group}"]);
@@ -391,6 +423,7 @@ public class ManageMenuService(
     {
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
+        builder.SetPlayerFrozen(coreConfig.FreezeAdminMenu);
         builder.Design.SetMenuTitle(localizer["manage.SelectGroup", playerName]);
 
         var existingGroupNames = existingGroups.Select(u => u.group).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -417,6 +450,7 @@ public class ManageMenuService(
     {
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
+        builder.SetPlayerFrozen(coreConfig.FreezeAdminMenu);
 
         var timeModeLabel = localizer[GetTimeModeKey(coreConfig.TimeMode)];
         builder.Design.SetMenuTitle(localizer["manage.ExtendTitle", user.name, timeModeLabel]);
