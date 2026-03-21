@@ -16,6 +16,7 @@ public partial class VIP_RoundEndAbilities : BasePlugin
 
     private IVipCoreApiV1? _vipApi;
     private bool _isFeatureRegistered;
+    private List<IPlayer> _playersWithAppliedAbilities = new();
 
     public VIP_RoundEndAbilities(ISwiftlyCore core) : base(core)
     {
@@ -92,13 +93,29 @@ public partial class VIP_RoundEndAbilities : BasePlugin
         return HookResult.Continue;
     }
 
-    public void ApplyAbilities(IPlayer player, Config config)
+    [GameEventHandler(HookMode.Post)]
+    public HookResult OnEventRoundPrestart(EventRoundPrestart @event)
     {
-        if (!player.IsValid) return;
-        
+        var players = _playersWithAppliedAbilities.ToList();
+
+        foreach (var player in players)
+        {
+            if (player == null || player.PlayerPawn == null)
+            {
+                _playersWithAppliedAbilities.Remove(player);
+                continue;
+            }
+            RemoveAbilities(player);
+        }
+
+        return HookResult.Continue;
+    }
+
+    private void ApplyAbilities(IPlayer player, Config config)
+    {
+        if (!player.IsValid) return;    
         var pawn = player.PlayerPawn;
         if (pawn == null) return;
-        
         if (pawn.LifeState != (byte)LifeState_t.LIFE_ALIVE) return;
 
         pawn.VelocityModifier = config.SpeedModifier;
@@ -106,6 +123,27 @@ public partial class VIP_RoundEndAbilities : BasePlugin
 
         pawn.ActualGravityScale = config.GravityModifier;
         pawn.GravityScaleUpdated();
+
+        if (!_playersWithAppliedAbilities.Contains(player))
+            _playersWithAppliedAbilities.Add(player);
+    }
+
+    private void RemoveAbilities(IPlayer player)
+    {
+        _playersWithAppliedAbilities.Remove(player);
+        Core.Scheduler.NextTick(() =>
+        {
+            if (!player.IsValid) return;
+            var pawn = player.PlayerPawn;
+            if (pawn == null) return;
+            if (pawn.LifeState != (byte)LifeState_t.LIFE_ALIVE) return;
+
+            pawn.VelocityModifier = 1f;
+            pawn.VelocityModifierUpdated();
+            pawn.ActualGravityScale = 1f;
+            pawn.GravityScaleUpdated();
+        });
+
     }
 
     public override void Unload()
