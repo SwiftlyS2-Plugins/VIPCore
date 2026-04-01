@@ -1,0 +1,7 @@
+{
+  "vip.gun_menu": "Gun Menu",
+  "vip.gun_menu.primary_menu_title": "Choose main gun",
+  "vip.gun_menu.secondary_menu_title": "Choose a pistol",
+  "vip.gun_menu.error.limit_exceeded": "Wait for [red]next round [default]for gun menu to be available",
+  "vip.gun_menu.error.command_only_for_players": "Only players can use gun menu command!"
+}
