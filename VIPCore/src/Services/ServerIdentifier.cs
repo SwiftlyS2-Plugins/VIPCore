@@ -112,11 +112,11 @@ public class ServerIdentifier
                     var desiredServer = await _userRepository.GetServerByIdAsync(desiredId);
                     if (desiredServer != null)
                     {
+                        await _userRepository.ClearGuidFromOtherServersAsync(_serverGuid, desiredId);
                         desiredServer.GUID = _serverGuid;
                         desiredServer.serverIp = _serverIp;
                         desiredServer.port = _serverPort;
                         await _userRepository.UpdateServerAsync(desiredServer);
-                        await _userRepository.ClearGuidFromOtherServersAsync(_serverGuid, desiredId);
 
                         _serverId = desiredId;
                         _initialized = true;
@@ -206,11 +206,11 @@ public class ServerIdentifier
                     var desiredServer = await _userRepository.GetServerByIdAsync(desiredId);
                     if (desiredServer != null)
                     {
+                        await _userRepository.ClearGuidFromOtherServersAsync(_serverGuid, desiredId);
                         desiredServer.GUID = _serverGuid;
                         desiredServer.serverIp = _serverIp;
                         desiredServer.port = _serverPort;
                         await _userRepository.UpdateServerAsync(desiredServer);
-                        await _userRepository.ClearGuidFromOtherServersAsync(_serverGuid, desiredId);
 
                         _serverId = desiredId;
                         _initialized = true;
