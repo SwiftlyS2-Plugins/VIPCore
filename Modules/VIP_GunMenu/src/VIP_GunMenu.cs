@@ -23,7 +23,8 @@ public partial class VIP_GunMenu : BasePlugin
     private int _maxRounds = 30;
     private ConcurrentDictionary<ulong, int> _gunMenuUsed = new();
     private PluginConfig _pluginConfig = new();
-    private bool _commandEnabled = true;
+    private bool _commandEnabled = false;
+    private int _roundId = 0;
 
     public VIP_GunMenu(ISwiftlyCore core) : base(core)
     {
@@ -135,6 +136,8 @@ public partial class VIP_GunMenu : BasePlugin
 
         if (player == null || player.PlayerPawn == null) return;
 
+        if (_gameRulesProxy?.GameRules?.WarmupPeriod == true) return;
+
         if (!_vipApi.IsClientVip(player)) return;
         if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled)
             return;
@@ -224,13 +227,35 @@ public partial class VIP_GunMenu : BasePlugin
 
         var totalRounds = _gameRulesProxy.GameRules.TotalRoundsPlayed;
 
+        if (totalRounds == 0) return true;
+
         var maxRounds = _maxRounds;
         var cvarMaxRounds = Core.ConVar.Find<int>("mp_maxrounds");
         if (cvarMaxRounds != null && cvarMaxRounds.Value > 0)
             maxRounds = cvarMaxRounds.Value;
 
         var half = maxRounds / 2;
-        return totalRounds == 0 || (half > 0 && totalRounds > 0 && (totalRounds % half) == 0);
+        if (half <= 0) return false;
+
+        // Second half start
+        if (totalRounds == half) return true;
+
+        // Overtime: detect each OT half-switch
+        if (totalRounds >= maxRounds)
+        {
+            var overtimeMaxRounds = 6;
+            var cvarOtMaxRounds = Core.ConVar.Find<int>("mp_overtime_maxrounds");
+            if (cvarOtMaxRounds != null && cvarOtMaxRounds.Value > 0)
+                overtimeMaxRounds = cvarOtMaxRounds.Value;
+
+            var otHalf = overtimeMaxRounds / 2;
+            if (otHalf <= 0) return false;
+
+            var roundsIntoOvertime = totalRounds - maxRounds;
+            return (roundsIntoOvertime % otHalf) == 0;
+        }
+
+        return false;
     }
 
     private void GivePlayerWeapon(IPlayer? player, Gun gun, bool replaceCurrentWeapon)
