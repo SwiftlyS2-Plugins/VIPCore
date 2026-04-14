@@ -1,4 +1,5 @@
 using System;
+using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.GameEventDefinitions;
@@ -38,8 +39,9 @@ public partial class VIP_Vampirism : BasePlugin
 
             RegisterVipFeaturesWhenReady();
         }
-        catch
+        catch (Exception ex)
         {
+            Core.Logger.LogError(ex, "[VIP_Vampirism] Failed to load VIPCore shared interface");
         }
     }
 
@@ -78,10 +80,7 @@ public partial class VIP_Vampirism : BasePlugin
         if (_vipApi == null) return HookResult.Continue;
 
         var attackerId = @event.Attacker;
-        if (attackerId <= 0) return HookResult.Continue;
-
-        var victimId = @event.UserId;
-        if (victimId == attackerId) return HookResult.Continue;
+        if (attackerId <= 0 || @event.UserId == attackerId) return HookResult.Continue;
 
         var attacker = Core.PlayerManager.GetPlayer(attackerId);
         if (attacker == null || attacker.IsFakeClient || !attacker.IsValid) return HookResult.Continue;
@@ -92,38 +91,25 @@ public partial class VIP_Vampirism : BasePlugin
         var dmgHealth = @event.DmgHealth;
         if (dmgHealth <= 0) return HookResult.Continue;
 
-
         var config = _vipApi.GetFeatureValue<VampirismConfig>(attacker, FeatureKey);
-        if (config == null) return HookResult.Continue;
+        if (config == null || config.GiveHealthMode != GiveHealthMode.OnDamage) return HookResult.Continue;
 
-        if (config.GiveHealthMode != GiveHealthMode.OnDamage) return HookResult.Continue;
-
-        int heal = 0;
-
-        if (config.HealthReturnMode == HealthMode.Percent)
+        int heal = config.HealthReturnMode switch
         {
-            float percent = config.Percent;
-            if (percent <= 0.0f) return HookResult.Continue;
+            HealthMode.Percent when config.Percent > 0f => (int)MathF.Round(dmgHealth * (config.Percent / 100.0f)),
+            HealthMode.Flat => config.Flat,
+            _ => 0
+        };
 
-             heal = (int)MathF.Round(dmgHealth * (percent / 100.0f));
-            if (heal <= 0) return HookResult.Continue;
-        }
-
-        if (config.HealthReturnMode == HealthMode.Flat)
-        {
-            heal = config.Flat;
-            if (heal <= 0) return HookResult.Continue;
-        }
+        if (heal <= 0) return HookResult.Continue;
 
         var controller = attacker.Controller as CCSPlayerController;
         if (controller == null || !controller.IsValid) return HookResult.Continue;
 
         var pawn = controller.PlayerPawn.Value;
-        if (pawn == null || !pawn.IsValid) return HookResult.Continue;
+        if (pawn == null || !pawn.IsValid || pawn.Health <= 0) return HookResult.Continue;
 
-        var newHealth = pawn.Health + heal;
-        if (newHealth > 0)
-            SetNewHealthForPawn(pawn, newHealth);
+        SetNewHealthForPawn(pawn, pawn.Health + heal);
 
         return HookResult.Continue;
     }
@@ -132,59 +118,45 @@ public partial class VIP_Vampirism : BasePlugin
     public HookResult HandlePlayerDeath(EventPlayerDeath @event)
     {
         if (_vipApi == null) return HookResult.Continue;
+
         var attackerId = @event.Attacker;
-        var victimId = @event.UserId;
-        if (attackerId <= 0) return HookResult.Continue;
+        if (attackerId <= 0 || @event.UserId == attackerId) return HookResult.Continue;
 
         var attacker = Core.PlayerManager.GetPlayer(attackerId);
-        if (victimId == attackerId) return HookResult.Continue;
         if (attacker == null || attacker.IsFakeClient || !attacker.IsValid) return HookResult.Continue;
         if (!_vipApi.IsClientVip(attacker)) return HookResult.Continue;
         if (_vipApi.GetPlayerFeatureState(attacker, FeatureKey) != FeatureState.Enabled) return HookResult.Continue;
 
         var config = _vipApi.GetFeatureValue<VampirismConfig>(attacker, FeatureKey);
-        if (config == null) return HookResult.Continue;
-
-        if (config.GiveHealthMode != GiveHealthMode.OnKill) return HookResult.Continue;
+        if (config == null || config.GiveHealthMode != GiveHealthMode.OnKill) return HookResult.Continue;
 
         var controller = attacker.Controller as CCSPlayerController;
         if (controller == null || !controller.IsValid) return HookResult.Continue;
 
         var pawn = controller.PlayerPawn.Value;
-        if (pawn == null || !pawn.IsValid) return HookResult.Continue;
+        if (pawn == null || !pawn.IsValid || pawn.Health <= 0) return HookResult.Continue;
 
-        int giveHealth = 0;
-        if (config.HealthReturnMode == HealthMode.Flat)
+        int giveHealth = config.HealthReturnMode switch
         {
-            giveHealth = config.Flat;
-        }
-        else if (config.HealthReturnMode == HealthMode.Percent)
-        {
-            float percent = config.Percent;
-            if (percent <= 0.0f) return HookResult.Continue;
-            giveHealth = (int)MathF.Round(pawn.MaxHealth * (percent / 100.0f));
-        }
+            HealthMode.Percent when config.Percent > 0f => (int)MathF.Round(pawn.MaxHealth * (config.Percent / 100.0f)),
+            HealthMode.Flat => config.Flat,
+            _ => 0
+        };
 
         if (giveHealth <= 0) return HookResult.Continue;
 
-        var newHealth = pawn.Health + giveHealth;
-        if (newHealth > 0)
+        int clampedNewHealth = Math.Min(pawn.Health + giveHealth, pawn.MaxHealth);
+        int gainedHealth = clampedNewHealth - pawn.Health;
+
+        if (gainedHealth > 0)
         {
-            var clampedNewHealth = newHealth;
-            if (clampedNewHealth > pawn.MaxHealth)
-                clampedNewHealth = pawn.MaxHealth;
+            SetNewHealthForPawn(pawn, clampedNewHealth);
 
-            var gainedHealth = clampedNewHealth - pawn.Health;
-            if (gainedHealth > 0)
-            {
-                SetNewHealthForPawn(pawn, clampedNewHealth);
+            var victim = Core.PlayerManager.GetPlayer(@event.UserId);
+            var victimName = victim?.Controller?.PlayerName ?? "Unknown";
 
-                var victim = Core.PlayerManager.GetPlayer(victimId);
-                var victimName = victim?.Controller?.PlayerName ?? "Unknown";
-
-                var localizer = Core.Translation.GetPlayerLocalizer(attacker);
-                attacker.SendMessage(MessageType.Chat, localizer["vampirism.GainedOnKill", gainedHealth, victimName]);
-            }
+            var localizer = Core.Translation.GetPlayerLocalizer(attacker);
+            attacker.SendMessage(MessageType.Chat, localizer["vampirism.GainedOnKill", gainedHealth, victimName]);
         }
 
         return HookResult.Continue;
