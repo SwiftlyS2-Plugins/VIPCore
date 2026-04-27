@@ -162,19 +162,17 @@ public class ServerIdentifier
 
             string? detectedIp = null;
             int detectedPort = 0;
-            for (var attempt = 1; attempt <= 10; attempt++)
+            for (var attempt = 1; attempt <= 15; attempt++)
             {
                 detectedIp = _core.Engine.ServerIP;
                 var hostport = _core.ConVar.Find<int>("hostport");
                 detectedPort = hostport?.Value ?? 0;
-
-                if (!string.IsNullOrEmpty(detectedIp) && detectedPort > 0)
+                if (!string.IsNullOrEmpty(detectedIp) && detectedIp != "0.0.0.0" && detectedPort > 0)
                     break;
 
                 await Task.Delay(TimeSpan.FromSeconds(2));
             }
-
-            if (string.IsNullOrEmpty(detectedIp) || detectedPort <= 0)
+            if (string.IsNullOrEmpty(detectedIp) || detectedIp == "0.0.0.0" || detectedPort <= 0)
             {
                 _core.Logger.LogError("[VIPCore] Failed to register server using GUID {Guid}: Missing hostport or server IP.", _serverGuid);
                 if (configuredServerId.HasValue)
