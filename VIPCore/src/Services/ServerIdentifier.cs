@@ -24,6 +24,7 @@ public class ServerIdentifier
     private string _serverGuid = string.Empty;
 
     public long ServerId => _serverId;
+    public long? EffectiveServerId => _coreConfigMonitor.CurrentValue.ShareServerId ? null : _serverId;
     public string? ServerIp => _serverIp;
     public int ServerPort => _serverPort;
     public bool IsInitialized => _initialized;
@@ -45,6 +46,11 @@ public class ServerIdentifier
             if (configuredServerId.HasValue)
             {
                 _core.Logger.LogInformation("[VIPCore] Server identified using configured ID {ServerId}.", configuredServerId.Value);
+            }
+
+            if (_coreConfigMonitor.CurrentValue.ShareServerId)
+            {
+                _core.Logger.LogInformation("[VIPCore] ShareServerId is enabled — VIP data is shared across all servers (server ID filter skipped).");
             }
 
             if (string.IsNullOrWhiteSpace(_core.PluginDataDirectory))

@@ -8,6 +8,7 @@ public class VipConfig
     public int TimeMode { get; set; } = 0;
     public bool VipLogging { get; set; } = true;
     public int? ServerId { get; set; } = null;
+    public bool ShareServerId { get; set; } = false;
     public bool FreezeMenu { get; set; } = false;
     public bool FreezeAdminMenu { get; set; } = false;
 }

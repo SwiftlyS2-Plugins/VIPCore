@@ -62,7 +62,7 @@ public class ManageMenuService(
                 {
                     try
                     {
-                        var users = await userRepository.GetAllUsersAsync(serverIdentifier.ServerId);
+                        var users = await userRepository.GetAllUsersAsync(serverIdentifier.EffectiveServerId);
                         var userList = users.ToList();
                         core.Scheduler.NextTick(() => OpenManageGroupsMenu(args.Player, userList));
                     }
