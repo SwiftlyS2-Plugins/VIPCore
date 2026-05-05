@@ -18,8 +18,6 @@ public class VIP_Bhop : BasePlugin
     private IVipCoreApiV1? _vipApi;
     private bool _isFeatureRegistered;
     private readonly BhopSettings[] _bhopSettings = new BhopSettings[65];
-    private readonly List<IPlayer> _cachedPlayers = new List<IPlayer>(64);
-    private bool _playerListDirty = true;
 
     public VIP_Bhop(ISwiftlyCore core) : base(core)
     {
@@ -56,7 +54,7 @@ public class VIP_Bhop : BasePlugin
         Core.Event.OnClientConnected += OnClientConnected;
         Core.Event.OnClientDisconnected += OnClientDisconnected;
         Core.Event.OnClientKeyStateChanged += OnClientKeyStateChanged;
-        Core.Event.OnTick += OnTick;
+        Core.Event.OnPlayerPawnPostThink += OnPlayerPawnPostThink;
         Core.GameEvent.HookPre<EventPlayerSpawn>(OnPlayerSpawn);
 
         RegisterVipFeaturesWhenReady();
@@ -76,14 +74,12 @@ public class VIP_Bhop : BasePlugin
     {
         if (args.PlayerId < 0 || args.PlayerId >= _bhopSettings.Length) return;
         _bhopSettings[args.PlayerId] = new BhopSettings();
-        _playerListDirty = true;
     }
 
     private void OnClientDisconnected(IOnClientDisconnectedEvent args)
     {
         if (args.PlayerId < 0 || args.PlayerId >= _bhopSettings.Length) return;
         _bhopSettings[args.PlayerId] = new BhopSettings();
-        _playerListDirty = true;
     }
 
     private void OnClientKeyStateChanged(IOnClientKeyStateChangedEvent @event)
@@ -93,62 +89,50 @@ public class VIP_Bhop : BasePlugin
         _bhopSettings[@event.PlayerId].IsHoldingJump = @event.Pressed;
     }
 
-    private void OnTick()
+    private void OnPlayerPawnPostThink(IOnPlayerPawnPostThinkHookEvent @event)
     {
-        if (_playerListDirty)
+        var csPawn = @event.PlayerPawn;
+        CBasePlayerPawn pawn = csPawn;
+
+        var player = pawn.ToPlayer();
+        if (player == null || player.IsFakeClient) return;
+
+        var playerId = player.PlayerID;
+        if (playerId < 0 || playerId >= _bhopSettings.Length) return;
+
+        var settings = _bhopSettings[playerId];
+        if (!settings.Active || !settings.Enabled) return;
+        if (!player.IsAlive) return;
+
+        var isGrounded = (pawn.Flags & 1u) != 0;
+        var wasGrounded = settings.PrevGrounded;
+        var velocity = pawn.AbsVelocity;
+
+        // Track horizontal velocity while airborne for restoration on landing
+        if (!isGrounded)
         {
-            _cachedPlayers.Clear();
-            _cachedPlayers.AddRange(Core.PlayerManager.GetAllPlayers());
-            _playerListDirty = false;
+            settings.PreLandVelocityX = velocity.X;
+            settings.PreLandVelocityY = velocity.Y;
         }
 
-        for (int i = 0; i < _cachedPlayers.Count; i++)
+        // Auto-bhop: just landed while holding jump — restore pre-landing velocity and re-jump
+        if (!wasGrounded && isGrounded && settings.IsHoldingJump)
         {
-            var player = _cachedPlayers[i];
-            if (!player.IsValid || player.IsFakeClient) continue;
-
-            var playerId = player.PlayerID;
-            if (playerId < 0 || playerId >= _bhopSettings.Length) continue;
-
-            var settings = _bhopSettings[playerId];
-            if (!settings.Active || !settings.Enabled) continue;
-            if (!player.IsAlive) continue;
-
-            var pawn = player.Pawn;
-            if (pawn is not { IsValid: true }) continue;
-
-            var isGrounded = (pawn.Flags & 1u) != 0;
-            var wasGrounded = settings.PrevGrounded;
-            var velocity = pawn.AbsVelocity;
-
-            // Track horizontal velocity while airborne for restoration on landing
-            if (!isGrounded)
-            {
-                settings.PreLandVelocityX = velocity.X;
-                settings.PreLandVelocityY = velocity.Y;
-            }
-
-            // Auto-bhop: just landed while holding jump — restore pre-landing velocity and re-jump
-            if (!wasGrounded && isGrounded && settings.IsHoldingJump)
-            {
-                var playerPawn = player.PlayerPawn;
-                if (playerPawn != null && playerPawn.IsValid)
-                    playerPawn.Teleport(null, null, new Vector(
-                        settings.PreLandVelocityX,
-                        settings.PreLandVelocityY,
-                        settings.JumpForce));
-            }
-            // Speed cap while airborne
-            else if (!isGrounded && settings.MaxSpeed > 0)
-            {
-                ClampPlayerSpeed(player, settings.MaxSpeed, velocity);
-            }
-
-            settings.PrevGrounded = isGrounded;
+            csPawn.Teleport(null, null, new Vector(
+                settings.PreLandVelocityX,
+                settings.PreLandVelocityY,
+                settings.JumpForce));
         }
+        // Speed cap while airborne
+        else if (!isGrounded && settings.MaxSpeed > 0)
+        {
+            ClampPlayerSpeed(csPawn, settings.MaxSpeed, velocity);
+        }
+
+        settings.PrevGrounded = isGrounded;
     }
 
-    private static void ClampPlayerSpeed(IPlayer player, float maxSpeed, Vector velocity)
+    private static void ClampPlayerSpeed(CCSPlayerPawn pawn, float maxSpeed, Vector velocity)
     {
         var vx = velocity.X;
         var vy = velocity.Y;
@@ -156,9 +140,6 @@ public class VIP_Bhop : BasePlugin
         var maxSpeedSqr = maxSpeed * maxSpeed;
 
         if (horizontalSpeedSqr <= maxSpeedSqr || horizontalSpeedSqr <= 0.001f) return;
-
-        var pawn = player.PlayerPawn;
-        if (pawn == null || !pawn.IsValid) return;
 
         var horizontalSpeed = Math.Sqrt(horizontalSpeedSqr);
         var ratio = (float)(maxSpeed / horizontalSpeed);
@@ -262,7 +243,7 @@ public class VIP_Bhop : BasePlugin
         Core.Event.OnClientConnected -= OnClientConnected;
         Core.Event.OnClientDisconnected -= OnClientDisconnected;
         Core.Event.OnClientKeyStateChanged -= OnClientKeyStateChanged;
-        Core.Event.OnTick -= OnTick;
+        Core.Event.OnPlayerPawnPostThink -= OnPlayerPawnPostThink;
 
         if (_vipApi != null)
         {
