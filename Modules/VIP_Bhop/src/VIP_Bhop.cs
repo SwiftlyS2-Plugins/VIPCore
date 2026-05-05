@@ -5,7 +5,7 @@ using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Events;
-using SwiftlyS2.Shared.Convars;
+using SwiftlyS2.Shared.Natives;
 using VIPCore.Contract;
 using SwiftlyS2.Shared.SchemaDefinitions;
 
@@ -20,12 +20,6 @@ public class VIP_Bhop : BasePlugin
     private readonly BhopSettings[] _bhopSettings = new BhopSettings[65];
     private readonly List<IPlayer> _cachedPlayers = new List<IPlayer>(64);
     private bool _playerListDirty = true;
-
-    private IConVar<bool>? _autobunnyhopping;
-    private IConVar<bool>? _enablebunnyhopping;
-
-    private ConvarFlags? _autobunnyhoppingOriginalFlags;
-    private ConvarFlags? _enablebunnyhoppingOriginalFlags;
 
     public VIP_Bhop(ISwiftlyCore core) : base(core)
     {
@@ -59,20 +53,10 @@ public class VIP_Bhop : BasePlugin
             _bhopSettings[i] = new BhopSettings();
         }
 
-        _autobunnyhopping = Core.ConVar.Find<bool>("sv_autobunnyhopping");
-        _enablebunnyhopping = Core.ConVar.Find<bool>("sv_enablebunnyhopping");
-
-        if (_autobunnyhopping != null)
-            _autobunnyhoppingOriginalFlags = _autobunnyhopping.Flags;
-        if (_enablebunnyhopping != null)
-            _enablebunnyhoppingOriginalFlags = _enablebunnyhopping.Flags;
-
-        UpdateGlobalBhopState();
-
         Core.Event.OnClientConnected += OnClientConnected;
         Core.Event.OnClientDisconnected += OnClientDisconnected;
+        Core.Event.OnClientKeyStateChanged += OnClientKeyStateChanged;
         Core.Event.OnTick += OnTick;
-        Core.GameEvent.HookPre<EventRoundFreezeEnd>(OnRoundFreezeEnd);
         Core.GameEvent.HookPre<EventPlayerSpawn>(OnPlayerSpawn);
 
         RegisterVipFeaturesWhenReady();
@@ -93,7 +77,6 @@ public class VIP_Bhop : BasePlugin
         if (args.PlayerId < 0 || args.PlayerId >= _bhopSettings.Length) return;
         _bhopSettings[args.PlayerId] = new BhopSettings();
         _playerListDirty = true;
-        UpdateGlobalBhopState();
     }
 
     private void OnClientDisconnected(IOnClientDisconnectedEvent args)
@@ -101,7 +84,13 @@ public class VIP_Bhop : BasePlugin
         if (args.PlayerId < 0 || args.PlayerId >= _bhopSettings.Length) return;
         _bhopSettings[args.PlayerId] = new BhopSettings();
         _playerListDirty = true;
-        UpdateGlobalBhopState();
+    }
+
+    private void OnClientKeyStateChanged(IOnClientKeyStateChangedEvent @event)
+    {
+        if (@event.Key != KeyKind.Space) return;
+        if (@event.PlayerId < 0 || @event.PlayerId >= _bhopSettings.Length) return;
+        _bhopSettings[@event.PlayerId].IsHoldingJump = @event.Pressed;
     }
 
     private void OnTick()
@@ -117,25 +106,50 @@ public class VIP_Bhop : BasePlugin
         {
             var player = _cachedPlayers[i];
             if (!player.IsValid || player.IsFakeClient) continue;
-            
+
             var playerId = player.PlayerID;
             if (playerId < 0 || playerId >= _bhopSettings.Length) continue;
 
             var settings = _bhopSettings[playerId];
             if (!settings.Active || !settings.Enabled) continue;
-            if (settings.MaxSpeed <= 0) continue;
             if (!player.IsAlive) continue;
 
-            ClampPlayerSpeed(player, settings.MaxSpeed);
+            var pawn = player.Pawn;
+            if (pawn is not { IsValid: true }) continue;
+
+            var isGrounded = (pawn.Flags & 1u) != 0;
+            var wasGrounded = settings.PrevGrounded;
+            var velocity = pawn.AbsVelocity;
+
+            // Track horizontal velocity while airborne for restoration on landing
+            if (!isGrounded)
+            {
+                settings.PreLandVelocityX = velocity.X;
+                settings.PreLandVelocityY = velocity.Y;
+            }
+
+            // Auto-bhop: just landed while holding jump — restore pre-landing velocity and re-jump
+            if (!wasGrounded && isGrounded && settings.IsHoldingJump)
+            {
+                var playerPawn = player.PlayerPawn;
+                if (playerPawn != null && playerPawn.IsValid)
+                    playerPawn.Teleport(null, null, new Vector(
+                        settings.PreLandVelocityX,
+                        settings.PreLandVelocityY,
+                        settings.JumpForce));
+            }
+            // Speed cap while airborne
+            else if (!isGrounded && settings.MaxSpeed > 0)
+            {
+                ClampPlayerSpeed(player, settings.MaxSpeed, velocity);
+            }
+
+            settings.PrevGrounded = isGrounded;
         }
     }
 
-    private static void ClampPlayerSpeed(IPlayer player, float maxSpeed)
+    private static void ClampPlayerSpeed(IPlayer player, float maxSpeed, Vector velocity)
     {
-        var pawn = player.PlayerPawn;
-        if (pawn == null || !pawn.IsValid) return;
-
-        var velocity = pawn.AbsVelocity;
         var vx = velocity.X;
         var vy = velocity.Y;
         var horizontalSpeedSqr = (vx * vx) + (vy * vy);
@@ -143,63 +157,13 @@ public class VIP_Bhop : BasePlugin
 
         if (horizontalSpeedSqr <= maxSpeedSqr || horizontalSpeedSqr <= 0.001f) return;
 
+        var pawn = player.PlayerPawn;
+        if (pawn == null || !pawn.IsValid) return;
+
         var horizontalSpeed = Math.Sqrt(horizontalSpeedSqr);
         var ratio = (float)(maxSpeed / horizontalSpeed);
 
-        pawn.Teleport(null, null, new SwiftlyS2.Shared.Natives.Vector(vx * ratio, vy * ratio, velocity.Z));
-    }
-
-    private void UpdateGlobalBhopState()
-    {
-        if (_autobunnyhopping == null || _enablebunnyhopping == null) return;
-
-        var shouldEnable = false;
-        for (var i = 0; i < _bhopSettings.Length; i++)
-        {
-            var settings = _bhopSettings[i];
-            if (settings.Active && settings.Enabled)
-            {
-                shouldEnable = true;
-                break;
-            }
-        }
-
-        if (shouldEnable)
-        {
-            if ((_autobunnyhopping.Flags & ConvarFlags.CHEAT) != 0)
-                _autobunnyhopping.Flags = _autobunnyhopping.Flags & ~ConvarFlags.CHEAT;
-            if ((_enablebunnyhopping.Flags & ConvarFlags.CHEAT) != 0)
-                _enablebunnyhopping.Flags = _enablebunnyhopping.Flags & ~ConvarFlags.CHEAT;
-
-            if (!_autobunnyhopping.Value)
-                _autobunnyhopping.SetInternal(true);
-            if (!_enablebunnyhopping.Value)
-                _enablebunnyhopping.SetInternal(true);
-        }
-        else
-        {
-            if (_autobunnyhopping.Value)
-                _autobunnyhopping.SetInternal(false);
-            if (_enablebunnyhopping.Value)
-                _enablebunnyhopping.SetInternal(false);
-
-            if (_autobunnyhoppingOriginalFlags.HasValue)
-                _autobunnyhopping.Flags = _autobunnyhoppingOriginalFlags.Value;
-            if (_enablebunnyhoppingOriginalFlags.HasValue)
-                _enablebunnyhopping.Flags = _enablebunnyhoppingOriginalFlags.Value;
-        }
-    }
-
-    private HookResult OnRoundFreezeEnd(EventRoundFreezeEnd @event)
-    {
-        var players = Core.PlayerManager.GetAllPlayers();
-        foreach (var player in players)
-        {
-            if (player == null || player.IsFakeClient || !player.IsValid) continue;
-            EnableBhopForPlayer(player);
-        }
-
-        return HookResult.Continue;
+        pawn.Teleport(null, null, new Vector(vx * ratio, vy * ratio, velocity.Z));
     }
 
     private HookResult OnPlayerSpawn(EventPlayerSpawn @event)
@@ -218,22 +182,17 @@ public class VIP_Bhop : BasePlugin
 
     private void EnableBhopForPlayer(IPlayer player)
     {
-        if (_vipApi == null)
-            return;
+        if (_vipApi == null) return;
 
         if (player.PlayerID < 0 || player.PlayerID >= _bhopSettings.Length) return;
 
         var settings = _bhopSettings[player.PlayerID];
-        
-        // If they already have active bhop, no need to do anything
-        if (settings.Active) return;
 
         settings.Active = false;
-        UpdateGlobalBhopState();
-        UpdatePlayerBunnyhop(player);
+        settings.PrevGrounded = true;
+        settings.IsHoldingJump = false;
 
-        if (!_vipApi.IsClientVip(player))
-            return;
+        if (!_vipApi.IsClientVip(player)) return;
 
         var featureState = _vipApi.GetPlayerFeatureState(player, FeatureKey);
 
@@ -258,38 +217,12 @@ public class VIP_Bhop : BasePlugin
                     player.SendMessage(MessageType.Chat, localizer["bhop.Activated"]);
                 });
                 settings.Active = true;
-                UpdateGlobalBhopState();
-                UpdatePlayerBunnyhop(player);
             });
         }
         else
         {
-            // Activate immediately if timer is 0
             settings.Active = true;
-            UpdateGlobalBhopState();
-            UpdatePlayerBunnyhop(player);
         }
-    }
-
-    private void UpdatePlayerBunnyhop(IPlayer player)
-    {
-        if (player.PlayerID < 0 || player.PlayerID >= _bhopSettings.Length) return;
-        var settings = _bhopSettings[player.PlayerID];
-        SetBunnyhop(player, settings.Active && settings.Enabled);
-    }
-
-    private void SetBunnyhop(IPlayer player, bool value)
-    {
-        if (player.PlayerID < 0 || player.PlayerID >= _bhopSettings.Length) return;
-
-        var settings = _bhopSettings[player.PlayerID];
-        if (settings.HasReplicatedOnce && settings.LastReplicatedValue == value) return;
-
-        _enablebunnyhopping?.ReplicateToClient(player.PlayerID, value);
-        _autobunnyhopping?.ReplicateToClient(player.PlayerID, value);
-
-        settings.HasReplicatedOnce = true;
-        settings.LastReplicatedValue = value;
     }
 
     private void RegisterVipFeatures()
@@ -302,8 +235,6 @@ public class VIP_Bhop : BasePlugin
             {
                 if (player.PlayerID < 0 || player.PlayerID >= _bhopSettings.Length) return;
                 _bhopSettings[player.PlayerID].Enabled = state == FeatureState.Enabled;
-                UpdateGlobalBhopState();
-                UpdatePlayerBunnyhop(player);
             });
         },
         displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.bhop"]);
@@ -322,8 +253,7 @@ public class VIP_Bhop : BasePlugin
             var config = _vipApi.GetFeatureValue<BhopConfig>(player, FeatureKey);
             _bhopSettings[player.PlayerID].Timer = config?.Timer ?? 5.0f;
             _bhopSettings[player.PlayerID].MaxSpeed = config?.MaxSpeed ?? 300.0f;
-
-            UpdatePlayerBunnyhop(player);
+            _bhopSettings[player.PlayerID].JumpForce = config?.JumpForce ?? 305.0f;
         };
     }
 
@@ -331,6 +261,7 @@ public class VIP_Bhop : BasePlugin
     {
         Core.Event.OnClientConnected -= OnClientConnected;
         Core.Event.OnClientDisconnected -= OnClientDisconnected;
+        Core.Event.OnClientKeyStateChanged -= OnClientKeyStateChanged;
         Core.Event.OnTick -= OnTick;
 
         if (_vipApi != null)
@@ -339,16 +270,6 @@ public class VIP_Bhop : BasePlugin
             if (_isFeatureRegistered)
                 _vipApi.UnregisterFeature(FeatureKey);
         }
-
-        if (_autobunnyhopping != null)
-            _autobunnyhopping.SetInternal(false);
-        if (_enablebunnyhopping != null)
-            _enablebunnyhopping.SetInternal(false);
-
-        if (_autobunnyhopping != null && _autobunnyhoppingOriginalFlags.HasValue)
-            _autobunnyhopping.Flags = _autobunnyhoppingOriginalFlags.Value;
-        if (_enablebunnyhopping != null && _enablebunnyhoppingOriginalFlags.HasValue)
-            _enablebunnyhopping.Flags = _enablebunnyhoppingOriginalFlags.Value;
     }
 }
 
@@ -356,10 +277,13 @@ public class BhopSettings
 {
     [JsonIgnore] public bool Active { get; set; }
     [JsonIgnore] public bool Enabled { get; set; }
-    [JsonIgnore] public bool HasReplicatedOnce { get; set; }
-    [JsonIgnore] public bool LastReplicatedValue { get; set; }
+    [JsonIgnore] public bool IsHoldingJump { get; set; }
+    [JsonIgnore] public bool PrevGrounded { get; set; } = true;
+    [JsonIgnore] public float PreLandVelocityX { get; set; }
+    [JsonIgnore] public float PreLandVelocityY { get; set; }
     public float Timer { get; set; } = 5.0f;
     public float MaxSpeed { get; set; } = 300.0f;
+    public float JumpForce { get; set; } = 305.0f;
 }
 
 /// <summary>
@@ -370,4 +294,5 @@ public class BhopConfig
 {
     public float Timer { get; set; } = 5.0f;
     public float MaxSpeed { get; set; } = 300.0f;
+    public float JumpForce { get; set; } = 305.0f;
 }
