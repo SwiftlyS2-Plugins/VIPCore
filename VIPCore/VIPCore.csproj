@@ -36,13 +36,13 @@
 
   <ItemGroup>
     <Reference Include="Cookies.Contract">
-      <HintPath>resources\exports\Cookies.Contract.dll</HintPath>
+      <HintPath>lib\Cookies.Contract.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="resources/gamedata/**/*;resources/templates/**/*;resources/translations/**/*;resources/exports/**/*">
+    <Content Include="resources/gamedata/**/*;resources/templates/**/*;resources/translations/**/*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -61,13 +61,13 @@
 
 
   <Target Name="CopyContractToExportsBuild" AfterTargets="Build">
-		<Copy SourceFiles="$(MSBuildThisFileDirectory)../VIPCore.Contract/build/$(TargetFramework)/VIPCore.Contract.dll" DestinationFolder="$(MSBuildThisFileDirectory)resources/exports/" />
-	</Target>
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)../VIPCore.Contract/build/$(TargetFramework)/VIPCore.Contract.dll" DestinationFolder="$(OutputPath)" />
+  </Target>
 
 
   <Target Name="CopyContractToExportsPublish" AfterTargets="Publish">
-		<Copy SourceFiles="$(MSBuildThisFileDirectory)../VIPCore.Contract/build/$(TargetFramework)/VIPCore.Contract.dll" DestinationFolder="$(PublishDir)resources/exports/" />
-	</Target>
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)../VIPCore.Contract/build/$(TargetFramework)/VIPCore.Contract.dll" DestinationFolder="$(PublishDir)" />
+  </Target>
 
 
 </Project> 

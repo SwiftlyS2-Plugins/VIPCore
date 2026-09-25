@@ -24,7 +24,7 @@
 
   <ItemGroup>
     <Reference Include="Cookies.Contract">
-      <HintPath>..\..\VIPCore\resources\exports\Cookies.Contract.dll</HintPath>
+      <HintPath>..\..\VIPCore\lib\Cookies.Contract.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
