@@ -2,6 +2,7 @@ using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Events;
 using SwiftlyS2.Shared.GameEventDefinitions;
+using SwiftlyS2.Shared.GameHooks;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.SchemaDefinitions;
@@ -45,12 +46,12 @@ public partial class VIP_NoFallDamage : BasePlugin {
 
   public override void Load(bool hotReload) {
     Core.GameEvent.HookPre<EventPlayerFalldamage>(OnPlayerFallDamage);
-    Core.Event.OnEntityTakeDamage += OnEntityTakeDamage;
+    Core.GameHooks.Entities.TakeDamage.Pre += OnEntityTakeDamage;
     RegisterVipFeaturesWhenReady();
   }
 
   public override void Unload() {
-    Core.Event.OnEntityTakeDamage -= OnEntityTakeDamage;
+    Core.GameHooks.Entities.TakeDamage.Pre -= OnEntityTakeDamage;
     if (_vipApi != null)
     {
       _vipApi.OnCoreReady -= RegisterVipFeatures;
@@ -100,18 +101,18 @@ public partial class VIP_NoFallDamage : BasePlugin {
     return HookResult.Continue;
   }
 
-  private void OnEntityTakeDamage(IOnEntityTakeDamageEvent @event)
+  private void OnEntityTakeDamage(ref TakeDamageEntityPreContext ctx)
   {
     if (_vipApi == null) return;
 
-    ref var info = ref @event.Info;
+    ref var info = ref ctx.Params.Info;
     if (!info.DamageType.HasFlag(DamageTypes_t.DMG_FALL)) return;
 
-    var entityInstance = @event.Entity;
-    if (!entityInstance.IsValid) return;
-    if (entityInstance.DesignerName != "player") return;
+    var entity = ctx.Params.Entity;
+    if (!entity.IsValid) return;
+    if (entity.DesignerName != "player") return;
 
-    var pawn = Core.EntitySystem.GetEntityByIndex<CCSPlayerPawn>(entityInstance.Index);
+    var pawn = Core.EntitySystem.GetEntityByIndex<CCSPlayerPawn>(entity.Index);
     if (pawn == null || !pawn.IsValid) return;
 
     var player = Core.PlayerManager.GetPlayerFromPawn(pawn);
@@ -120,6 +121,6 @@ public partial class VIP_NoFallDamage : BasePlugin {
     if (!_vipApi.IsClientVip(player)) return;
     if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled) return;
 
-    @event.Result = HookResult.Stop;
+    ctx.SetHookResult(HookResult.Stop);
   }
 }

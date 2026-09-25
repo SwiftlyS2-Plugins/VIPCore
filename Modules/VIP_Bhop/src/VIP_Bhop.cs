@@ -5,6 +5,7 @@ using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Events;
+using SwiftlyS2.Shared.GameHooks;
 using SwiftlyS2.Shared.Natives;
 using VIPCore.Contract;
 using SwiftlyS2.Shared.SchemaDefinitions;
@@ -54,7 +55,7 @@ public class VIP_Bhop : BasePlugin
         Core.Event.OnClientConnected += OnClientConnected;
         Core.Event.OnClientDisconnected += OnClientDisconnected;
         Core.Event.OnClientKeyStateChanged += OnClientKeyStateChanged;
-        Core.Event.OnPlayerPawnPostThink += OnPlayerPawnPostThink;
+        Core.GameHooks.Pawn.PostThink.Pre += OnPlayerPawnPostThink;
         Core.GameEvent.HookPre<EventPlayerSpawn>(OnPlayerSpawn);
 
         RegisterVipFeaturesWhenReady();
@@ -89,12 +90,9 @@ public class VIP_Bhop : BasePlugin
         _bhopSettings[@event.PlayerId].IsHoldingJump = @event.Pressed;
     }
 
-    private void OnPlayerPawnPostThink(IOnPlayerPawnPostThinkHookEvent @event)
+    private void OnPlayerPawnPostThink(ref PostThinkPawnPreContext ctx)
     {
-        var csPawn = @event.PlayerPawn;
-        CBasePlayerPawn pawn = csPawn;
-
-        var player = pawn.ToPlayer();
+        var player = ctx.Params.Player;
         if (player == null || player.IsFakeClient) return;
 
         var playerId = player.PlayerID;
@@ -103,6 +101,10 @@ public class VIP_Bhop : BasePlugin
         var settings = _bhopSettings[playerId];
         if (!settings.Active || !settings.Enabled) return;
         if (!player.IsAlive) return;
+
+        var csPawn = player.PlayerPawn;
+        if (csPawn is not { IsValid: true }) return;
+        CBasePlayerPawn pawn = csPawn;
 
         var isGrounded = (pawn.Flags & 1u) != 0;
         var wasGrounded = settings.PrevGrounded;
@@ -243,7 +245,7 @@ public class VIP_Bhop : BasePlugin
         Core.Event.OnClientConnected -= OnClientConnected;
         Core.Event.OnClientDisconnected -= OnClientDisconnected;
         Core.Event.OnClientKeyStateChanged -= OnClientKeyStateChanged;
-        Core.Event.OnPlayerPawnPostThink -= OnPlayerPawnPostThink;
+        Core.GameHooks.Pawn.PostThink.Pre -= OnPlayerPawnPostThink;
 
         if (_vipApi != null)
         {
