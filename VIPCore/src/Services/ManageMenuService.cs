@@ -123,7 +123,7 @@ public class ManageMenuService(
             var option = new ButtonMenuOption(group);
             option.Click += async (sender, args) =>
             {
-                core.Scheduler.NextTick(() => OpenAddVipSelectTimeMenu(args.Player, steamId, playerName, group));
+                core.Scheduler.NextTick(() => OpenAddVipSelectScopeMenu(args.Player, steamId, playerName, group));
                 await ValueTask.CompletedTask;
             };
             builder.AddOption(option);
@@ -133,7 +133,28 @@ public class ManageMenuService(
         core.MenusAPI.OpenMenuForPlayer(admin, menu);
     }
 
-    private void OpenAddVipSelectTimeMenu(IPlayer admin, long steamId, string playerName, string group)
+    private void OpenAddVipSelectScopeMenu(IPlayer admin, long steamId, string playerName, string group)
+    {
+        var localizer = core.Translation.GetPlayerLocalizer(admin);
+        var builder = core.MenusAPI.CreateBuilder();
+        builder.SetPlayerFrozen(coreConfig.FreezeAdminMenu);
+        builder.Design.SetMenuTitle(localizer["manage.SelectScope", playerName]);
+
+        foreach (var global in new[] { false, true })
+        {
+            var option = new ButtonMenuOption(localizer[global ? "manage.Scope.Global" : "manage.Scope.Local"]);
+            option.Click += async (sender, args) =>
+            {
+                core.Scheduler.NextTick(() => OpenAddVipSelectTimeMenu(args.Player, steamId, playerName, group, global));
+                await ValueTask.CompletedTask;
+            };
+            builder.AddOption(option);
+        }
+
+        core.MenusAPI.OpenMenuForPlayer(admin, builder.Build());
+    }
+
+    private void OpenAddVipSelectTimeMenu(IPlayer admin, long steamId, string playerName, string group, bool global)
     {
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
@@ -158,15 +179,15 @@ public class ManageMenuService(
                     {
                         try
                         {
-                            await vipService.AddVip(steamId, playerName, group, t);
+                            await vipService.AddVip(steamId, playerName, group, t, global);
 
                             core.Scheduler.NextTick(() =>
                             {
                                 var loc = core.Translation.GetPlayerLocalizer(args.Player);
                                 var displayLabel = loc[timeKey];
-                                args.Player.SendMessage(MessageType.Chat, loc["manage.chat.AddedVip", playerName, steamId, group, displayLabel]);
+                                args.Player.SendMessage(MessageType.Chat, loc["manage.chat.AddedVip", playerName, steamId, $"{group} ({loc[global ? "manage.Scope.Global" : "manage.Scope.Local"]})", displayLabel]);
 
-                                var target = core.PlayerManager.GetPlayerFromSteamId((ulong)steamId);
+                                var target = core.PlayerManager.GetPlayerFromSteamId((ulong)VipService.ToSteamId64(steamId));
                                 if (target != null)
                                 {
                                     Task.Run(async () =>
@@ -200,14 +221,14 @@ public class ManageMenuService(
                 {
                     try
                     {
-                        await vipService.AddVip(steamId, playerName, group, 0);
+                        await vipService.AddVip(steamId, playerName, group, 0, global);
 
                         core.Scheduler.NextTick(() =>
                         {
                             var loc = core.Translation.GetPlayerLocalizer(args.Player);
-                            args.Player.SendMessage(MessageType.Chat, loc["manage.chat.AddedVipPermanent", playerName, steamId, group]);
+                            args.Player.SendMessage(MessageType.Chat, loc["manage.chat.AddedVipPermanent", playerName, steamId, $"{group} ({loc[global ? "manage.Scope.Global" : "manage.Scope.Local"]})"]);
 
-                            var target = core.PlayerManager.GetPlayerFromSteamId((ulong)steamId);
+                            var target = core.PlayerManager.GetPlayerFromSteamId((ulong)VipService.ToSteamId64(steamId));
                             if (target != null)
                             {
                                 Task.Run(async () =>
@@ -246,7 +267,7 @@ public class ManageMenuService(
         {
             var group = groupName;
             var groupUsers = users.Where(u => string.Equals(u.group, group, StringComparison.OrdinalIgnoreCase)).ToList();
-            var playerCount = groupUsers.Select(u => u.account_id).Distinct().Count();
+            var playerCount = groupUsers.Select(u => VipService.ToSteamId64(u.account_id)).Distinct().Count();
             var option = new ButtonMenuOption(localizer["manage.GroupEntry", group, playerCount]);
             option.Click += async (sender, args) =>
             {
@@ -273,13 +294,13 @@ public class ManageMenuService(
         }
         else
         {
-            var grouped = users.GroupBy(u => u.account_id).ToList();
+            var grouped = users.GroupBy(u => VipService.ToSteamId64(u.account_id)).ToList();
             foreach (var playerGroup in grouped)
             {
                 var playerUsers = playerGroup.ToList();
                 var first = playerUsers.First();
-                var groupNames = string.Join(", ", playerUsers.Select(u => u.group));
-                var option = new ButtonMenuOption(localizer["manage.UserEntry", first.name, first.account_id, groupNames]);
+                var groupNames = string.Join(", ", playerUsers.Select(u => $"{u.group} ({localizer[u.sid == 0 ? "manage.Scope.Global" : "manage.Scope.Local"]})"));
+                var option = new ButtonMenuOption(localizer["manage.UserEntry", first.name, VipService.ToSteamId64(first.account_id), groupNames]);
                 option.Click += async (sender, args) =>
                 {
                     core.Scheduler.NextTick(() => OpenUserManageMenu(args.Player, playerUsers));
@@ -302,13 +323,13 @@ public class ManageMenuService(
 
         builder.Design.SetMenuTitle(localizer["manage.UserDetail", first.name]);
 
-        builder.AddOption(new TextMenuOption(localizer["manage.SteamId", first.account_id]));
+        builder.AddOption(new TextMenuOption(localizer["manage.SteamId", VipService.ToSteamId64(first.account_id)]));
 
         foreach (var u in playerUsers)
         {
             var userEntry = u;
             var expiresText = userEntry.expires == 0 ? localizer["manage.Permanent"] : DateTimeOffset.FromUnixTimeSeconds(userEntry.expires).ToString("yyyy-MM-dd HH:mm");
-            var groupOption = new ButtonMenuOption(localizer["manage.Group", userEntry.group]);
+            var groupOption = new ButtonMenuOption(localizer["manage.Group", $"{userEntry.group} ({localizer[userEntry.sid == 0 ? "manage.Scope.Global" : "manage.Scope.Local"]})"]);
             groupOption.Comment = localizer["manage.Expires", expiresText];
             groupOption.Click += async (sender, args) =>
             {
@@ -321,39 +342,55 @@ public class ManageMenuService(
         var addGroupOption = new ButtonMenuOption(localizer["manage.AddGroup"]);
         addGroupOption.Click += async (sender, args) =>
         {
-            core.Scheduler.NextTick(() => OpenAddGroupMenu(args.Player, first.account_id, first.name, playerUsers));
+            core.Scheduler.NextTick(() => OpenAddGroupMenu(args.Player, first.account_id, first.name));
             await ValueTask.CompletedTask;
         };
         builder.AddOption(addGroupOption);
 
-        var removeAllOption = new ButtonMenuOption(localizer["manage.RemoveAllVip"]);
-        removeAllOption.Click += async (sender, args) =>
+        foreach (var global in new[] { false, true })
         {
-            core.Scheduler.NextTick(() =>
+            if (!playerUsers.Any(u => global ? u.sid == 0 : u.sid == serverIdentifier.ServerId)) continue;
+            var removeAllOption = new ButtonMenuOption(localizer[global ? "manage.RemoveAllGlobalVip" : "manage.RemoveAllVip"]);
+            removeAllOption.Click += async (sender, args) =>
             {
-                Task.Run(async () =>
+                core.Scheduler.NextTick(() =>
                 {
-                    try
+                    Task.Run(async () =>
                     {
-                        await vipService.RemoveVip(first.account_id);
-                        core.Scheduler.NextTick(() =>
+                        try
                         {
-                            var loc = core.Translation.GetPlayerLocalizer(args.Player);
-                            args.Player.SendMessage(MessageType.Chat, loc["manage.chat.RemovedVip", first.name, first.account_id]);
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        core.Logger.LogError(ex, "[VIPCore] Failed to remove VIP user {SteamId}", first.account_id);
-                        var loc = core.Translation.GetPlayerLocalizer(args.Player);
-                        core.Scheduler.NextTick(() => args.Player.SendMessage(MessageType.Chat, loc["manage.chat.FailedRemoveVip", ex.Message]));
-                    }
+                            await vipService.RemoveVip(first.account_id, global);
+                            core.Scheduler.NextTick(() =>
+                            {
+                                var target = core.PlayerManager.GetPlayerFromSteamId((ulong)VipService.ToSteamId64(first.account_id));
+                                if (target != null)
+                                {
+                                    Task.Run(async () =>
+                                    {
+                                        try { await vipService.LoadPlayer(target); }
+                                        catch (Exception ex) { core.Logger.LogError(ex, "[VIPCore] Failed to reload VIP player {SteamId}", first.account_id); }
+                                    });
+                                }
+                                var loc = core.Translation.GetPlayerLocalizer(args.Player);
+                                args.Player.SendMessage(MessageType.Chat, loc["manage.chat.RemovedVip", first.name, first.account_id]);
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            core.Logger.LogError(ex, "[VIPCore] Failed to remove VIP user {SteamId}", first.account_id);
+                            core.Scheduler.NextTick(() =>
+                            {
+                                var loc = core.Translation.GetPlayerLocalizer(args.Player);
+                                args.Player.SendMessage(MessageType.Chat, loc["manage.chat.FailedRemoveVip", ex.Message]);
+                            });
+                        }
+                    });
+                    core.MenusAPI.CloseActiveMenu(args.Player);
                 });
-                core.MenusAPI.CloseActiveMenu(args.Player);
-            });
-            await ValueTask.CompletedTask;
-        };
-        builder.AddOption(removeAllOption);
+                await ValueTask.CompletedTask;
+            };
+            builder.AddOption(removeAllOption);
+        }
 
         var menu = builder.Build();
         core.MenusAPI.OpenMenuForPlayer(admin, menu);
@@ -368,7 +405,7 @@ public class ManageMenuService(
         var expiresText = user.expires == 0 ? localizer["manage.Permanent"] : DateTimeOffset.FromUnixTimeSeconds(user.expires).ToString("yyyy-MM-dd HH:mm");
         builder.Design.SetMenuTitle(localizer["manage.UserDetail", $"{user.name} - {user.group}"]);
 
-        builder.AddOption(new TextMenuOption(localizer["manage.Group", user.group]));
+        builder.AddOption(new TextMenuOption(localizer["manage.Group", $"{user.group} ({localizer[user.sid == 0 ? "manage.Scope.Global" : "manage.Scope.Local"]})"]));
         builder.AddOption(new TextMenuOption(localizer["manage.ExpiresLabel", expiresText]));
 
         var extendOption = new ButtonMenuOption(localizer["manage.ExtendDuration"]);
@@ -388,9 +425,9 @@ public class ManageMenuService(
                 {
                     try
                     {
-                        await vipService.RemoveVipGroup(user.account_id, user.group);
+                        await vipService.RemoveVipGroup(user.account_id, user.group, user.sid);
 
-                        var target = core.PlayerManager.GetPlayerFromSteamId((ulong)user.account_id);
+                        var target = core.PlayerManager.GetPlayerFromSteamId((ulong)VipService.ToSteamId64(user.account_id));
                         if (target != null)
                         {
                             await vipService.LoadPlayer(target);
@@ -419,24 +456,20 @@ public class ManageMenuService(
         core.MenusAPI.OpenMenuForPlayer(admin, menu);
     }
 
-    private void OpenAddGroupMenu(IPlayer admin, long accountId, string playerName, List<User> existingGroups)
+    private void OpenAddGroupMenu(IPlayer admin, long accountId, string playerName)
     {
         var localizer = core.Translation.GetPlayerLocalizer(admin);
         var builder = core.MenusAPI.CreateBuilder();
         builder.SetPlayerFrozen(coreConfig.FreezeAdminMenu);
         builder.Design.SetMenuTitle(localizer["manage.SelectGroup", playerName]);
 
-        var existingGroupNames = existingGroups.Select(u => u.group).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
         foreach (var groupName in groupsConfig.Groups.Keys)
         {
             var group = groupName;
-            var alreadyHas = existingGroupNames.Contains(group);
-            var option = new ButtonMenuOption(alreadyHas ? localizer["manage.CurrentGroup", group] : group);
-            option.Enabled = !alreadyHas;
+            var option = new ButtonMenuOption(group);
             option.Click += async (sender, args) =>
             {
-                core.Scheduler.NextTick(() => OpenAddVipSelectTimeMenu(args.Player, accountId, playerName, group));
+                core.Scheduler.NextTick(() => OpenAddVipSelectScopeMenu(args.Player, accountId, playerName, group));
                 await ValueTask.CompletedTask;
             };
             builder.AddOption(option);
@@ -487,7 +520,7 @@ public class ManageMenuService(
                             user.expires = newExpires;
                             await userRepository.UpdateUserAsync(user);
 
-                            var target = core.PlayerManager.GetPlayerFromSteamId((ulong)user.account_id);
+                            var target = core.PlayerManager.GetPlayerFromSteamId((ulong)VipService.ToSteamId64(user.account_id));
                             if (target != null)
                             {
                                 await vipService.LoadPlayer(target);
@@ -528,7 +561,7 @@ public class ManageMenuService(
                         user.expires = 0;
                         await userRepository.UpdateUserAsync(user);
 
-                        var target = core.PlayerManager.GetPlayerFromSteamId((ulong)user.account_id);
+                        var target = core.PlayerManager.GetPlayerFromSteamId((ulong)VipService.ToSteamId64(user.account_id));
                         if (target != null)
                         {
                             await vipService.LoadPlayer(target);

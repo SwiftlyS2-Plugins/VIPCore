@@ -32,7 +32,7 @@ public class VipService(
         id >= SteamId64Base ? id - SteamId64Base : id;
 
     /// <summary>Converts AccountID to SteamID64. Returns SteamID64 unchanged.</summary>
-    private static long ToSteamId64(long id) =>
+    internal static long ToSteamId64(long id) =>
         id < SteamId64Base ? id + SteamId64Base : id;
 
     public bool IsClientVip(IPlayer player)
@@ -62,10 +62,15 @@ public class VipService(
         var allGroups = (await userRepository.GetUserGroupsAsync(steamId64, serverIdentifier.EffectiveServerId)).ToList();
 
         // Also try the AccountID form in case VIP was added with the short Steam AccountID
-        if (allGroups.Count == 0 && accountId != steamId64)
-            allGroups = (await userRepository.GetUserGroupsAsync(accountId, serverIdentifier.EffectiveServerId)).ToList();
+        if (accountId != steamId64)
+            allGroups.AddRange(await userRepository.GetUserGroupsAsync(accountId, serverIdentifier.EffectiveServerId));
 
-        if (allGroups.Count == 0) return null;
+        if (allGroups.Count == 0)
+        {
+            if (!(_users.TryGetValue(player.SteamID, out var current) && current.IsTemporary))
+                _users.TryRemove(player.SteamID, out _);
+            return null;
+        }
 
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var expiredGroups = allGroups.Where(u => u.expires != 0 && u.expires < now).ToList();
@@ -100,7 +105,7 @@ public class VipService(
             sid = activeUser.sid,
             group = activeUser.group,
             expires = activeUser.expires,
-            OwnedGroups = validGroups.Select(u => u.group).ToList()
+            OwnedGroups = validGroups.Select(u => u.group).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
         };
 
         InitializeFeaturesForUser(vipUser);
@@ -122,23 +127,12 @@ public class VipService(
 
     private User? ResolveHighestWeightGroup(List<User> validGroups)
     {
-        User? best = null;
-        int bestWeight = int.MinValue;
-
-        foreach (var user in validGroups)
-        {
-            var groupName = groupsConfig.Groups.Keys.FirstOrDefault(k => k.Equals(user.group, StringComparison.OrdinalIgnoreCase));
-            if (groupName == null || !groupsConfig.Groups.TryGetValue(groupName, out var groupConfig))
-                continue;
-
-            if (groupConfig.Weight > bestWeight)
-            {
-                bestWeight = groupConfig.Weight;
-                best = user;
-            }
-        }
-
-        return best ?? validGroups.FirstOrDefault();
+        return validGroups
+            .OrderByDescending(user => groupsConfig.Groups.FirstOrDefault(g => g.Key.Equals(user.group, StringComparison.OrdinalIgnoreCase)).Value?.Weight ?? int.MinValue)
+            .ThenByDescending(user => user.sid == serverIdentifier.ServerId)
+            .ThenBy(user => user.group, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(user => user.account_id)
+            .FirstOrDefault();
     }
 
     public void OverrideVipGroup(IPlayer player, string group)
@@ -228,10 +222,15 @@ public class VipService(
         }
     }
 
-    public async Task AddVip(long accountId, string name, string group, int time)
+    public async Task AddVip(long accountId, string name, string group, int time, bool global = false)
     {
         accountId = NormalizeToAccountId(accountId);
-        var existingUser = await userRepository.GetUserAsync(accountId, serverIdentifier.EffectiveServerId);
+        var serverId = global ? 0 : serverIdentifier.ServerId;
+        if (!global && serverId <= 0) throw new InvalidOperationException("Server ID is not initialized.");
+        var existingUser = await userRepository.GetUserAsync(accountId, serverId, group);
+        var steamId64 = ToSteamId64(accountId);
+        if (existingUser == null && steamId64 != accountId)
+            existingUser = await userRepository.GetUserAsync(steamId64, serverId, group);
         long expires;
 
         if (time <= 0)
@@ -254,10 +253,10 @@ public class VipService(
 
         var user = new User
         {
-            account_id = accountId,
+            account_id = existingUser?.account_id ?? accountId,
             name = name,
             lastvisit = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-            sid = serverIdentifier.ServerId,
+            sid = serverId,
             group = group,
             expires = expires
         };
@@ -265,27 +264,35 @@ public class VipService(
         await userRepository.AddUserAsync(user);
     }
 
-    public async Task RemoveVip(long accountId)
+    public async Task RemoveVip(long accountId, bool global = false)
     {
         var normalized = NormalizeToAccountId(accountId);
         var steamId64 = ToSteamId64(accountId);
+        var serverId = global ? 0 : serverIdentifier.ServerId;
+        if (!global && serverId <= 0) throw new InvalidOperationException("Server ID is not initialized.");
 
-        await userRepository.DeleteUserAsync(normalized, serverIdentifier.EffectiveServerId);
+        await userRepository.DeleteUserAsync(normalized, serverId);
         if (steamId64 != normalized)
-            await userRepository.DeleteUserAsync(steamId64, serverIdentifier.EffectiveServerId);
+            await userRepository.DeleteUserAsync(steamId64, serverId);
 
         _users.TryRemove((ulong)steamId64, out _);
         _users.TryRemove((ulong)normalized, out _);
     }
 
-    public async Task RemoveVipGroup(long accountId, string group)
+    public async Task RemoveVipGroup(long accountId, string group, long? serverId = null)
     {
         var normalized = NormalizeToAccountId(accountId);
         var steamId64 = ToSteamId64(accountId);
+        var grantServerId = serverId ?? serverIdentifier.ServerId;
+        if (grantServerId < 0 || (serverId == null && grantServerId == 0))
+            throw new InvalidOperationException("Server ID is not initialized.");
 
-        await userRepository.DeleteUserGroupAsync(normalized, serverIdentifier.EffectiveServerId, group);
+        await userRepository.DeleteUserGroupAsync(normalized, grantServerId, group);
         if (steamId64 != normalized)
-            await userRepository.DeleteUserGroupAsync(steamId64, serverIdentifier.EffectiveServerId, group);
+            await userRepository.DeleteUserGroupAsync(steamId64, grantServerId, group);
+
+        _users.TryRemove((ulong)steamId64, out _);
+        _users.TryRemove((ulong)normalized, out _);
     }
 
     public void InitializeFeatureForLoadedPlayers(string featureKey)

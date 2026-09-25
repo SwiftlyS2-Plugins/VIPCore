@@ -203,12 +203,20 @@ public class VipCoreApiV1 : IVipCoreApiV1
         Task.Run(async () =>
         {
             await VipService.RemoveVip(steamId);
+            if (!player.IsValid) return;
+            await VipService.LoadPlayer(player);
 
             _core.Scheduler.NextTick(() =>
             {
-                if (!string.IsNullOrEmpty(group))
+                if (!player.IsValid) return;
+                var activeGroup = GetClientVipGroup(player);
+                if (string.IsNullOrEmpty(activeGroup))
                 {
-                    RaisePlayerRemoved(player, group);
+                    if (!string.IsNullOrEmpty(group)) RaisePlayerRemoved(player, group);
+                }
+                else
+                {
+                    RaisePlayerLoaded(player, activeGroup);
                 }
             });
         });

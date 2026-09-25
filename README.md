@@ -47,8 +47,12 @@ It provides database-backed VIP groups, a shared API for feature modules, and a 
 | :--- | :--- | :--- |
 | `vip` | Player | Opens the VIP menu for the current player. |
 | `vip_manage` | `vipcore.manage` | Opens the VIP management menu (in-game). |
-| `vip_adduser <steamid> <group> <time>` | `vipcore.adduser` | Adds a SteamID to a VIP group for a duration based on `TimeMode`. Use `0` for permanent. |
-| `vip_deleteuser <steamid>` | `vipcore.deleteuser` | Removes VIP status for a SteamID. |
+| `vip_adduser <steamid> <group> <time>` | `vipcore.adduser` | Adds a local VIP group for a duration based on `TimeMode`. Use `0` for permanent. |
+| `vip_addglobal <steamid> <group> <time>` | `vipcore.addglobal` | Adds a VIP group shared by all servers using the same database. |
+| `vip_deleteuser <steamid>` | `vipcore.deleteuser` | Removes local VIP groups only. |
+| `vip_deleteglobal <steamid>` | `vipcore.deleteglobal` | Removes global VIP groups only. |
+
+Global grants use `sid = 0` and require every participating server to connect to the same database. Local grants use the current server ID; when both scopes provide a group of equal weight, the local grant takes precedence. Leave `ShareServerId` disabled for scoped behavior; enabling it continues to expose every server's grants everywhere. `vip_manage` can add and remove either scope. Players already online on another server may need to reconnect for changes to take effect there.
 
 Console usage: SwiftlyS2 console commands are typically exposed with the `sw_` prefix (for example `sw_vip`, `sw_vip_adduser`, etc.).
 
