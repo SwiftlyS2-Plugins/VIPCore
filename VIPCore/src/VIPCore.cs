@@ -69,12 +69,13 @@ public sealed partial class VIPCore : BasePlugin
 
         var vipService = _serviceProvider!.GetRequiredService<VipService>();
         var steamId = player.SteamID;
+        var playerName = player.Controller?.PlayerName;
 
         Task.Run(async () =>
         {
             try
             {
-                var expiredGroup = await vipService.LoadPlayerWithExpiredInfo(player);
+                var expiredGroup = await vipService.LoadPlayerWithExpiredInfo(player, playerName);
 
                 var vipUser = vipService.GetVipUser(steamId);
                 Core.Scheduler.NextTick(() =>

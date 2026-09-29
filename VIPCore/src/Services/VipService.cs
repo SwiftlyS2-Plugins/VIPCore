@@ -52,10 +52,12 @@ public class VipService(
         await LoadPlayerWithExpiredInfo(player);
     }
 
-    public async Task<string?> LoadPlayerWithExpiredInfo(IPlayer player)
+    public async Task<string?> LoadPlayerWithExpiredInfo(IPlayer player, string? playerName = null)
     {
         if (player.IsFakeClient) return null;
 
+        // Capture before any await: the player may be disposed (disconnect) while DB calls run.
+        var name = playerName ?? SafeGetName(player);
         var steamId64 = (long)player.SteamID;
         var accountId = NormalizeToAccountId(steamId64);
 
@@ -74,14 +76,14 @@ public class VipService(
         foreach (var expired in expiredGroups)
         {
             await userRepository.DeleteUserGroupAsync(expired.account_id, expired.sid, expired.group);
-            core.Logger.LogInformation("[VIPCore] VIP group '{Group}' expired for player {Name} ({SteamId})", expired.group, player.Controller.PlayerName, player.SteamID);
+            core.Logger.LogInformation("[VIPCore] VIP group '{Group}' expired for player {Name} ({SteamId})", expired.group, name, steamId64);
         }
 
         if (validGroups.Count == 0)
         {
             // Don't evict a temporary in-memory entry created by OverrideVipGroup
-            if (!(_users.TryGetValue(player.SteamID, out var current) && current.IsTemporary))
-                _users.TryRemove(player.SteamID, out _);
+            if (!(_users.TryGetValue((ulong)steamId64, out var current) && current.IsTemporary))
+                _users.TryRemove((ulong)steamId64, out _);
 
             if (expiredGroups.Count == 0) return null;
 
@@ -104,20 +106,26 @@ public class VipService(
         };
 
         InitializeFeaturesForUser(vipUser);
-        _users[player.SteamID] = vipUser;
+        _users[(ulong)steamId64] = vipUser;
 
         foreach (var g in validGroups)
         {
             g.lastvisit = now;
-            g.name = player.Controller.PlayerName;
+            g.name = name;
             await userRepository.UpdateUserAsync(g);
         }
 
         if (coreConfig.VipLogging)
             core.Logger.LogDebug("[VIPCore] Loaded VIP player {Name} ({SteamId}) with active group {Group} (owns: {OwnedGroups})",
-                player.Controller.PlayerName, player.SteamID, activeUser.group, string.Join(", ", vipUser.OwnedGroups));
+                name, steamId64, activeUser.group, string.Join(", ", vipUser.OwnedGroups));
 
         return null;
+    }
+
+    private static string SafeGetName(IPlayer player)
+    {
+        try { return player.Controller?.PlayerName ?? "unknown"; }
+        catch (ObjectDisposedException) { return "unknown"; }
     }
 
     private User? ResolveHighestWeightGroup(List<User> validGroups)
