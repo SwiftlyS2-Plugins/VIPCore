@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SwiftlyS2.VIPCore.Contract" Version="1.0.0" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="SwiftlyS2.VIPCore.Contract" Version="1.0.2" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" ExcludeAssets="runtime" PrivateAssets="all" />

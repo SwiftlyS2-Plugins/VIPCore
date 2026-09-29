@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SwiftlyS2.VIPCore.Contract" Version="*" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="SwiftlyS2.VIPCore.Contract" Version="1.0.2" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="SwiftlyS2.CS2" Version="*-*" ExcludeAssets="runtime" PrivateAssets="all" />
   </ItemGroup>
 
