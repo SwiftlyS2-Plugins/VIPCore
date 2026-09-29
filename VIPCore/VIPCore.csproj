@@ -30,7 +30,7 @@
     <PackageReference Include="FluentMigrator.Runner.SQLite" Version="6.2.0" />
     <PackageReference Include="Dapper.Contrib" Version="2.0.78" />
     <PackageReference Include="Dommel" Version="3.5.0" />
-    <PackageReference Include="SwiftlyS2.CS2" Version="1.2.1" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="SwiftlyS2.CS2" Version="1.4.12" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="SwiftlyS2.VIPCore.Contract" Version="1.0.2" ExcludeAssets="runtime" PrivateAssets="all" />
   </ItemGroup>
 
@@ -42,7 +42,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="resources/gamedata/**/*;resources/templates/**/*;resources/translations/**/*">
+    <Content Include="resources/gamedata/**/*;resources/templates/**/*;resources/translations/**/*;resources/exports/**/*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
@@ -62,11 +62,13 @@
 
   <Target Name="CopyContractToExportsBuild" AfterTargets="Build">
     <Copy SourceFiles="$(MSBuildThisFileDirectory)../VIPCore.Contract/build/$(TargetFramework)/VIPCore.Contract.dll" DestinationFolder="$(OutputPath)" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)../VIPCore.Contract/build/$(TargetFramework)/VIPCore.Contract.dll" DestinationFolder="$(MSBuildThisFileDirectory)resources/exports" />
   </Target>
 
 
   <Target Name="CopyContractToExportsPublish" AfterTargets="Publish">
     <Copy SourceFiles="$(MSBuildThisFileDirectory)../VIPCore.Contract/build/$(TargetFramework)/VIPCore.Contract.dll" DestinationFolder="$(PublishDir)" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)../VIPCore.Contract/build/$(TargetFramework)/VIPCore.Contract.dll" DestinationFolder="$(PublishDir)/resources/exports" />
   </Target>
 
 

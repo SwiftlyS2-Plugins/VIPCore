@@ -104,6 +104,9 @@ public partial class VIP_ChatColor : BasePlugin
 
     private HookResult OnClientChat(int playerId, string text, bool teamonly)
     {
+        if (text.StartsWith('!') || text.StartsWith('/') || text.StartsWith('@'))
+            return HookResult.Continue;
+
         if (_vipApi == null) return HookResult.Continue;
 
         var player = Core.PlayerManager.GetPlayer(playerId);

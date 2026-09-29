@@ -5,9 +5,7 @@ using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Events;
-using SwiftlyS2.Shared.NetMessages;
 using SwiftlyS2.Shared.Players;
-using SwiftlyS2.Shared.ProtobufDefinitions;
 using SwiftlyS2.Shared.SchemaDefinitions;
 using VIPCore.Contract;
 
@@ -24,8 +22,8 @@ public partial class VIP_Tag : BasePlugin {
   private IVipCoreApiV1? _vipApi;
   private bool _isFeatureRegistered;
 
-  private Guid _netMsgHookGuid;
-  private bool _netMsgHookRegistered;
+  private Guid _chatHookGuid;
+  private bool _chatHookRegistered;
 
   private readonly int[] _selectedTagIndices = new int[65];
 
@@ -50,18 +48,18 @@ public partial class VIP_Tag : BasePlugin {
     for (var i = 0; i < _selectedTagIndices.Length; i++)
       _selectedTagIndices[i] = 0;
 
-    _netMsgHookGuid = Core.NetMessage.HookServerMessage<CUserMessageSayText2>(OnSayText2);
-    _netMsgHookRegistered = true;
+    _chatHookGuid = Core.Command.HookClientChat(OnClientChat);
+    _chatHookRegistered = true;
 
     Core.Event.OnClientDisconnected += OnClientDisconnected;
     RegisterVipFeaturesWhenReady();
   }
 
   public override void Unload() {
-    if (_netMsgHookRegistered)
+    if (_chatHookRegistered)
     {
-      Core.NetMessage.Unhook(_netMsgHookGuid);
-      _netMsgHookRegistered = false;
+      Core.Command.UnhookClientChat(_chatHookGuid);
+      _chatHookRegistered = false;
     }
 
     Core.Event.OnClientDisconnected -= OnClientDisconnected;
@@ -78,14 +76,13 @@ public partial class VIP_Tag : BasePlugin {
     }
   }
 
-  private HookResult OnSayText2(CUserMessageSayText2 msg)
+  private HookResult OnClientChat(int playerId, string text, bool teamonly)
   {
+    if (text.StartsWith('!') || text.StartsWith('/') || text.StartsWith('@'))
+      return HookResult.Continue;
+
     if (_vipApi == null) return HookResult.Continue;
 
-    var entityIndex = msg.Entityindex;
-    if (entityIndex <= 0) return HookResult.Continue;
-
-    var playerId = entityIndex - 1;
     var player = Core.PlayerManager.GetPlayer(playerId);
     if (player == null || !player.IsValid || player.IsFakeClient) return HookResult.Continue;
     if (!_vipApi.IsClientVip(player)) return HookResult.Continue;
@@ -106,9 +103,27 @@ public partial class VIP_Tag : BasePlugin {
     var tag = tags[listIndex] ?? string.Empty;
     if (string.IsNullOrWhiteSpace(tag)) return HookResult.Continue;
 
-    msg.Param1 = $"{tag} {msg.Param1}";
+    var controller = player.Controller;
+    if (controller == null || !controller.IsValid) return HookResult.Continue;
 
-    return HookResult.Continue;
+    var playerName = controller.PlayerName;
+    var message = $"{tag} {playerName}: {text}";
+
+    if (teamonly)
+    {
+      var teamNum = controller.TeamNum;
+      foreach (var p in Core.PlayerManager.GetAllValidPlayers())
+      {
+        if (!p.IsFakeClient && p.Controller != null && p.Controller.TeamNum == teamNum)
+          p.SendChat(message);
+      }
+    }
+    else
+    {
+      Core.PlayerManager.SendChat(message);
+    }
+
+    return HookResult.Stop;
   }
 
   private void RegisterVipFeaturesWhenReady()
