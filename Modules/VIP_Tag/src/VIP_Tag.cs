@@ -11,6 +11,13 @@ using VIPCore.Contract;
 
 namespace VIP_Tag;
 
+public class ChatColorConfig
+{
+  public string Global { get; set; } = "";
+  public string CT { get; set; } = "";
+  public string T { get; set; } = "";
+}
+
 [PluginMetadata(Id = "VIP_Tag", Version = "1.0.0", Name = "VIP_Tag", Author = "aga", Description = "No description.")]
 public partial class VIP_Tag : BasePlugin {
   private const string FeatureKey = "vip.tag";
@@ -107,7 +114,21 @@ public partial class VIP_Tag : BasePlugin {
     if (controller == null || !controller.IsValid) return HookResult.Continue;
 
     var playerName = controller.PlayerName;
-    var message = $"{tag} {playerName}: {text}";
+    var colorTag = string.Empty;
+    if (_vipApi.PlayerHasFeature(player, "vip.chatcolor")
+      && _vipApi.GetPlayerFeatureState(player, "vip.chatcolor") == FeatureState.Enabled)
+    {
+      var cfg = _vipApi.GetFeatureValue<ChatColorConfig>(player, "vip.chatcolor");
+      if (cfg != null)
+      {
+        colorTag = cfg.Global ?? "";
+        if (controller.TeamNum == (byte)Team.CT && !string.IsNullOrEmpty(cfg.CT)) colorTag = cfg.CT;
+        else if (controller.TeamNum == (byte)Team.T && !string.IsNullOrEmpty(cfg.T)) colorTag = cfg.T;
+      }
+    }
+
+    var teamLabel = teamonly ? "(Team) " : "";
+    var message = $"{tag} {colorTag}{teamLabel}{playerName}[default]: {text}".Colored();
 
     if (teamonly)
     {

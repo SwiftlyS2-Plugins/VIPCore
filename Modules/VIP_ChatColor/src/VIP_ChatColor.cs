@@ -139,7 +139,21 @@ public partial class VIP_ChatColor : BasePlugin
         var teamLabel  = teamonly ? "(Team) " : "";
 
         // Helper.Colored() resolves [blue], [red], [default] etc. into CS2 chat escape bytes
-        var message = $"{colorTag}{teamLabel}{playerName}[default]: {text}".Colored();
+        var tagPrefix = "";
+        if (_vipApi.PlayerHasFeature(player, "vip.tag")
+            && _vipApi.GetPlayerFeatureState(player, "vip.tag") == FeatureState.Enabled)
+        {
+            try
+            {
+                var idx = _vipApi.GetPlayerCookie<int>(player, "vip.tag.value");
+                var tags = _vipApi.GetFeatureValue<List<string>>(player, "vip.tag");
+                if (idx > 0 && tags != null && idx <= tags.Count && !string.IsNullOrWhiteSpace(tags[idx - 1]))
+                    tagPrefix = tags[idx - 1] + " ";
+            }
+            catch { }
+        }
+
+        var message = $"{tagPrefix}{colorTag}{teamLabel}{playerName}[default]: {text}".Colored();
 
         if (teamonly)
         {
