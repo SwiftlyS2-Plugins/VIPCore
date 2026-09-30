@@ -24,7 +24,7 @@ Example:
   "VIPGroups": {
     "vip": {
       "Features": {
-        "vip.endurance": 1
+        "Endurance": 1
       }
     }
   }
@@ -33,6 +33,10 @@ Example:
 
 Use `1` to enable the feature by default or `0` to let the player enable it
 from the VIP menu.
+
+The recommended feature key is `"Endurance"`, matching the original module.
+For compatibility with version 1.0.0 of this SwiftlyS2 port,
+`"vip.endurance"` is also supported. Configure only one of these keys.
 
 ## Translations
 
