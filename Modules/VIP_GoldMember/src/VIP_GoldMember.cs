@@ -95,7 +95,12 @@ public partial class VIP_GoldMember : BasePlugin {
     var player = Core.PlayerManager.GetPlayer(@event.PlayerId);
     if (player == null || player.IsFakeClient) return;
 
-    Core.Scheduler.DelayBySeconds(1.0f, () => CheckPlayer(player));
+    var playerId = @event.PlayerId;
+    Core.Scheduler.DelayBySeconds(1.0f, () =>
+    {
+      var current = Core.PlayerManager.GetPlayer(playerId);
+      if (current != null) CheckPlayer(current);
+    });
   }
 
   private void OnClientDisconnected(IOnClientDisconnectedEvent @event)

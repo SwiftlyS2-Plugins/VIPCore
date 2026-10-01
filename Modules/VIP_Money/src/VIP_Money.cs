@@ -153,9 +153,12 @@ public partial class VIP_Money : BasePlugin {
 
     if (string.IsNullOrWhiteSpace(moneyValue)) return;
 
+    var playerId = player.PlayerID;
     Core.Scheduler.NextTick(() =>
     {
-      var controller = player.Controller as CCSPlayerController;
+      var current = Core.PlayerManager.GetPlayer(playerId);
+      if (current == null) return;
+      var controller = current.Controller as CCSPlayerController;
       if (controller == null || !controller.IsValid) return;
 
       var moneyServices = controller.InGameMoneyServices;

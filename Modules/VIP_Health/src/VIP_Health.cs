@@ -122,12 +122,15 @@ public partial class VIP_Health : BasePlugin {
 
   private void ScheduleApplyAttempt(IPlayer player, int healthValue, int attempt)
   {
+    var playerId = player.PlayerID;
     Core.Scheduler.NextTick(() =>
     {
-      if (ApplyHealth(player, healthValue)) return;
+      var current = Core.PlayerManager.GetPlayer(playerId);
+      if (current == null) return;
+      if (ApplyHealth(current, healthValue)) return;
       if (attempt >= ApplyMaxAttempts) return;
 
-      Core.Scheduler.DelayBySeconds(ApplyRetryDelaySeconds, () => ScheduleApplyAttempt(player, healthValue, attempt + 1));
+      Core.Scheduler.DelayBySeconds(ApplyRetryDelaySeconds, () => ScheduleApplyAttempt(current, healthValue, attempt + 1));
     });
   }
 

@@ -279,12 +279,15 @@ public partial class VIP_Tag : BasePlugin {
 
   private void ScheduleApplyAttempt(IPlayer player, int attempt)
   {
+    var playerId = player.PlayerID;
     Core.Scheduler.NextTick(() =>
     {
-      if (TryApplyTag(player)) return;
+      var current = Core.PlayerManager.GetPlayer(playerId);
+      if (current == null) return;
+      if (TryApplyTag(current)) return;
       if (attempt >= ApplyMaxAttempts) return;
 
-      Core.Scheduler.DelayBySeconds(ApplyRetryDelaySeconds, () => ScheduleApplyAttempt(player, attempt + 1));
+      Core.Scheduler.DelayBySeconds(ApplyRetryDelaySeconds, () => ScheduleApplyAttempt(current, attempt + 1));
     });
   }
 

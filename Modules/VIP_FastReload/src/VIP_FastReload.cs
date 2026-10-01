@@ -103,6 +103,7 @@ public partial class VIP_FastReload : BasePlugin
         if (_lastAutoReloadMs.TryGetValue(controller.Index, out var last) && now - last < 200)
             return HookResult.Continue;
 
+        var playerId = player.PlayerID;
         Core.Scheduler.NextTick(() =>
         {
             if (controller == null || !controller.IsValid) return;
@@ -119,7 +120,8 @@ public partial class VIP_FastReload : BasePlugin
             if (_lastAutoReloadMs.TryGetValue(controller.Index, out var last2) && now2 - last2 < 200)
                 return;
             _lastAutoReloadMs[controller.Index] = now2;
-            ApplyFastReload(player);
+            var current = Core.PlayerManager.GetPlayer(playerId);
+            if (current != null) ApplyFastReload(current);
         });
 
         return HookResult.Continue;
