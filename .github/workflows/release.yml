@@ -202,11 +202,11 @@ jobs:
           TAG="${{ steps.tag.outputs.tag }}"
           TITLE="${{ steps.tag.outputs.title }}"
 
-          # Auto-detect pre-release (contains -)
+          # Pre-release if not on the default branch, or version contains -
           PRERELEASE_FLAG=""
-          if [[ "$VERSION" == *-* ]]; then
+          if [[ "${{ github.ref_name }}" != "${{ github.event.repository.default_branch }}" || "$VERSION" == *-* ]]; then
             PRERELEASE_FLAG="--prerelease"
-            echo "Detected pre-release version"
+            echo "Detected pre-release (branch: ${{ github.ref_name }})"
           fi
 
           echo "Creating release: $TAG (Title: $TITLE)"
