@@ -103,7 +103,12 @@ public partial class VIP_Speed : BasePlugin {
       var player = @event.UserIdPlayer;
       if (player == null) return HookResult.Continue;
 
-      Core.Scheduler.NextTick(() => ApplySpeed(player));
+      var playerId = player.PlayerID;
+      Core.Scheduler.NextTick(() =>
+      {
+          var current = Core.PlayerManager.GetPlayer(playerId);
+          if (current != null) ApplySpeed(current);
+      });
 
       return HookResult.Continue;
   }

@@ -155,9 +155,11 @@ public class VIP_Bhop : BasePlugin
         if (player == null || player.IsFakeClient || !player.IsValid) return HookResult.Continue;
 
         // Give a slight delay to allow the player to fully spawn
+        var playerId = player.PlayerID;
         Core.Scheduler.DelayBySeconds(0.1f, () =>
         {
-            EnableBhopForPlayer(player);
+            var current = Core.PlayerManager.GetPlayer(playerId);
+            if (current != null) EnableBhopForPlayer(current);
         });
 
         return HookResult.Continue;

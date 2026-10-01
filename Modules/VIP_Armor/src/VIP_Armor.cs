@@ -161,12 +161,15 @@ public partial class VIP_Armor : BasePlugin {
 
   private void ScheduleApplyAttempt(IPlayer player, int armorValue, int attempt)
   {
+    var playerId = player.PlayerID;
     Core.Scheduler.NextTick(() =>
     {
-      if (ApplyArmor(player, armorValue)) return;
+      var current = Core.PlayerManager.GetPlayer(playerId);
+      if (current == null) return;
+      if (ApplyArmor(current, armorValue)) return;
       if (attempt >= ApplyMaxAttempts) return;
 
-      Core.Scheduler.DelayBySeconds(ApplyRetryDelaySeconds, () => ScheduleApplyAttempt(player, armorValue, attempt + 1));
+      Core.Scheduler.DelayBySeconds(ApplyRetryDelaySeconds, () => ScheduleApplyAttempt(current, armorValue, attempt + 1));
     });
   }
 

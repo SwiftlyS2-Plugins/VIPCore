@@ -94,12 +94,15 @@ public partial class VIP_Zeus : BasePlugin {
 
   private void ScheduleGiveAttempt(IPlayer player, int attempt)
   {
+    var playerId = player.PlayerID;
     Core.Scheduler.NextTick(() =>
     {
-      if (TryGiveTaser(player)) return;
+      var current = Core.PlayerManager.GetPlayer(playerId);
+      if (current == null) return;
+      if (TryGiveTaser(current)) return;
       if (attempt >= GiveMaxAttempts) return;
 
-      Core.Scheduler.DelayBySeconds(GiveRetryDelaySeconds, () => ScheduleGiveAttempt(player, attempt + 1));
+      Core.Scheduler.DelayBySeconds(GiveRetryDelaySeconds, () => ScheduleGiveAttempt(current, attempt + 1));
     });
   }
 
