@@ -201,3 +201,7 @@ https://github.com/SwiftlyS2-Plugins/VIPCore/blob/master/Modules/VIP_ChatColor/s
 
 Metamod Chat Processor format implementation additionally reviewed:
 https://github.com/Pisex/cs2-chat-processor
+
+<img width="440" height="196" alt="cs2_DrCsM8YZmA" src="https://github.com/user-attachments/assets/f37848d0-f885-4371-972c-b81a66c3b992" />
+<img width="409" height="33" alt="cs2_wAWJC6ug2J" src="https://github.com/user-attachments/assets/801faea0-871c-4d0a-8f6f-c531c4540e42" />
+
