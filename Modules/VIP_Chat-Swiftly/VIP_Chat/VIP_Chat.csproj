@@ -7,10 +7,10 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <AssemblyName>VIP_Endurance</AssemblyName>
-    <Version>1.2.0</Version>
+    <AssemblyName>VIP_Chat</AssemblyName>
+    <Version>1.0.1</Version>
     <OutputPath>$(MSBuildThisFileDirectory)build/</OutputPath>
-    <PublishDir>$(OutputPath)publish/VIP_Endurance</PublishDir>
+    <PublishDir>$(OutputPath)publish/VIP_Chat</PublishDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="resources/gamedata/**/*;resources/templates/**/*;resources/translations/**/*">
+    <Content Include="README.md;examples/**/*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

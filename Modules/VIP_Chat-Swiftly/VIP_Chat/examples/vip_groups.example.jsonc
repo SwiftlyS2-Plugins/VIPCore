@@ -1,0 +1,18 @@
+// Пример структуры: НЕ заменяет вашу конфигурацию групп!
+{
+  "vip_groups": {
+    "Groups": {
+      "EXAMPLE_VIP": {
+        "Weight": 10,
+        "Values": {
+          "vip.chat": {
+            "Prefix": "list",
+            "NameColor": "list",
+            "TextColor": "list",
+            "PrefixColor": "list"
+          }
+        }
+      }
+    }
+  }
+}
