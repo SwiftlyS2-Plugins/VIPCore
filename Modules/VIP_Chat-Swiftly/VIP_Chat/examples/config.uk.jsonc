@@ -1,0 +1,31 @@
+{
+  "chat": {
+    "Language": "uk",
+    "FreezePlayer": false,
+    "MaxPrefixLength": 32,
+    "InputTimeoutSeconds": 60,
+    "Prefixes": {
+      "VIP": "[VIP]",
+      "PREMIUM": "[PREMIUM]",
+      "Kyiv Light": "[Kyiv Light]"
+    },
+    "Colors": {
+      "Командний": "{TEAM}",
+      "Білий": "{DEFAULT}",
+      "Червоний": "{RED}",
+      "Темно-червоний": "{DARKRED}",
+      "Світло-червоний": "{LIGHTRED}",
+      "Фіолетовий": "{PURPLE}",
+      "Світло-фіолетовий": "{LIGHTPURPLE}",
+      "Зелений": "{GREEN}",
+      "Лаймовий": "{LIME}",
+      "Світло-зелений": "{LIGHTGREEN}",
+      "Сірий": "{GRAY}",
+      "Оливковий": "{OLIVE}",
+      "Жовтий": "{LIGHTOLIVE}",
+      "Синій": "{BLUE}",
+      "Світло-синій": "{LIGHTBLUE}",
+      "Блакитний": "{GRAYBLUE}"
+    }
+  }
+}
