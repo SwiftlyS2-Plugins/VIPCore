@@ -88,7 +88,7 @@ public partial class VIP_Vampirism : BasePlugin
         if (!_vipApi.IsClientVip(attacker)) return HookResult.Continue;
         if (_vipApi.GetPlayerFeatureState(attacker, FeatureKey) != FeatureState.Enabled) return HookResult.Continue;
 
-        var dmgHealth = @event.DmgHealth;
+        var dmgHealth = @event.ActualDmgHealth;
         if (dmgHealth <= 0) return HookResult.Continue;
 
         var config = _vipApi.GetFeatureValue<VampirismConfig>(attacker, FeatureKey);
