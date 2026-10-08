@@ -4,16 +4,19 @@ using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.Misc;
 using VIPCore.Contract;
+using Microsoft.Extensions.Logging;
 
 namespace VIP_AntiFlash;
 
-[PluginMetadata(Id = "VIP_AntiFlash", Version = "1.0.0", Name = "[VIP] AntiFlash", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_AntiFlash", Version = "1.0.1-teamfix", Name = "[VIP] AntiFlash", Author = "aga", Description = "Fixed AntiFlash mode 1: immunity applies only to flashbangs thrown by other teammates; self and enemy flashes still blind the player.")]
 public class VIP_AntiFlash : BasePlugin
 {
     private const string FeatureKey = "vip.antiflash";
 
     private IVipCoreApiV1? _vipApi;
     private bool _isFeatureRegistered;
+    private Guid? _blindHook;
+    private bool _configurationErrorLogged;
 
     public VIP_AntiFlash(ISwiftlyCore core) : base(core)
     {
@@ -25,8 +28,7 @@ public class VIP_AntiFlash : BasePlugin
 
     public override void UseSharedInterface(IInterfaceManager interfaceManager)
     {
-        _vipApi = null;
-        _isFeatureRegistered = false;
+        DetachVipApi();
 
         try
         {
@@ -43,14 +45,15 @@ public class VIP_AntiFlash : BasePlugin
                     _vipApi.OnCoreReady += RegisterVipFeatures;
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Core.Logger.LogWarning(ex, "[VIP_AntiFlash] Could not attach VIPCore.Api.v1.");
         }
     }
 
     public override void Load(bool hotReload)
     {
-        Core.GameEvent.HookPre<EventPlayerBlind>(OnPlayerBlind);
+        _blindHook = Core.GameEvent.HookPre<EventPlayerBlind>(OnPlayerBlind);
     }
 
     private HookResult OnPlayerBlind(EventPlayerBlind @event)
@@ -58,7 +61,7 @@ public class VIP_AntiFlash : BasePlugin
         if (_vipApi == null) return HookResult.Continue;
 
         var player = @event.Accessor.GetPlayer("userid");
-        if (player == null || player.IsFakeClient) return HookResult.Continue;
+        if (player == null || !player.IsValid || player.IsFakeClient) return HookResult.Continue;
 
         if (!_vipApi.IsClientVip(player)) return HookResult.Continue;
         if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled) return HookResult.Continue;
@@ -69,29 +72,32 @@ public class VIP_AntiFlash : BasePlugin
         var pawn = controller.PlayerPawn.Value;
         if (pawn == null || !pawn.IsValid) return HookResult.Continue;
 
-        var featureValue = 0;
-        var attacker = @event.Accessor.GetPlayer("attacker");
-
-        var sameTeam = attacker != null && attacker.Controller?.Team == player.Controller?.Team;
-
-        switch (featureValue)
+        int mode;
+        try
         {
-            case 1:
-                if (sameTeam && player.Slot != attacker?.Slot)
-                    pawn.FlashDuration = 0.0f;
-                break;
-            case 2:
-                if (player.Slot == attacker?.Slot)
-                    pawn.FlashDuration = 0.0f;
-                break;
-            case 3:
-                if (sameTeam || player.Slot == attacker?.Slot)
-                    pawn.FlashDuration = 0.0f;
-                break;
-            default:
-                pawn.FlashDuration = 0.0f;
-                break;
+            // VIPCore's generic API requires a reference type. The converter lets
+            // its ConfigurationBinder read the existing scalar "vip.antiflash": 1.
+            mode = _vipApi.GetFeatureValue<AntiFlashSettings>(player, FeatureKey)?.Mode ?? 0;
         }
+        catch (Exception ex)
+        {
+            // Bad config must not silently turn into full flash immunity.
+            if (!_configurationErrorLogged)
+            {
+                Core.Logger.LogWarning(ex, "[VIP_AntiFlash] Invalid vip.antiflash setting. Expected integer 0..3. Immunity skipped; check VIP group config.");
+                _configurationErrorLogged = true;
+            }
+            return HookResult.Continue;
+        }
+
+        var attacker = @event.Accessor.GetPlayer("attacker");
+        var validAttacker = attacker != null && attacker.IsValid;
+        var isSelf = validAttacker && player.Slot == attacker!.Slot;
+        var sameTeam = validAttacker && attacker!.Controller != null
+            && attacker.Controller.Team == controller.Team;
+
+        if (AntiFlashPolicy.ShouldBlock(mode, isSelf, sameTeam))
+            pawn.FlashDuration = 0.0f;
 
         return HookResult.Continue;
     }
@@ -104,15 +110,28 @@ public class VIP_AntiFlash : BasePlugin
         displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.antiflash"]);
 
         _isFeatureRegistered = true;
-
-        _vipApi.PlayerLoaded += (player, group) =>
-        {
-        };
+        _vipApi.OnCoreReady -= RegisterVipFeatures;
     }
 
     public override void Unload()
     {
-        if (_vipApi == null) return;
-        _vipApi.UnregisterFeature(FeatureKey);
+        if (_blindHook is { } hook)
+        {
+            Core.GameEvent.Unhook(hook);
+            _blindHook = null;
+        }
+        DetachVipApi();
+    }
+
+    private void DetachVipApi()
+    {
+        if (_vipApi != null)
+        {
+            _vipApi.OnCoreReady -= RegisterVipFeatures;
+            if (_isFeatureRegistered)
+                _vipApi.UnregisterFeature(FeatureKey);
+        }
+        _vipApi = null;
+        _isFeatureRegistered = false;
     }
 }
