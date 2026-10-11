@@ -86,7 +86,7 @@ public partial class VIP_Zeus : BasePlugin {
   private HookResult OnPlayerSpawnEvent(EventPlayerSpawn @event)
   {
     var player = @event.UserIdPlayer;
-    if (player == null || player.IsFakeClient || !player.IsValid) return HookResult.Continue;
+    if (player == null || !player.IsValid || player.IsFakeClient) return HookResult.Continue;
 
     ScheduleGiveAttempt(player, attempt: 1);
     return HookResult.Continue;
@@ -109,7 +109,7 @@ public partial class VIP_Zeus : BasePlugin {
   private bool TryGiveTaser(IPlayer player)
   {
     if (_vipApi == null) return false;
-    if (player.IsFakeClient || !player.IsValid) return false;
+    if (!player.IsValid || player.IsFakeClient) return false;
 
     if (!_vipApi.IsClientVip(player)) return false;
     if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled) return false;

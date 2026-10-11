@@ -116,7 +116,7 @@ public partial class VIP_Speed : BasePlugin {
   private void ApplySpeed(IPlayer player)
   {
       if (_vipApi == null) return;
-      if (player.IsFakeClient || !player.IsValid) return;
+      if (!player.IsValid || player.IsFakeClient) return;
       if (!_vipApi.IsClientVip(player)) return;
       if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled) return;
 

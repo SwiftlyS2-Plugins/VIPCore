@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.GameEventDefinitions;
@@ -41,13 +42,15 @@ public partial class VIP_FastDefuse : BasePlugin {
 
       RegisterVipFeaturesWhenReady();
     }
-    catch
+    catch (Exception ex)
     {
+      Core.Logger.LogError(ex, "[VIP_FastDefuse] Failed to get VIPCore shared interface");
     }
   }
 
   public override void Load(bool hotReload) {
-    Core.GameEvent.HookPre<EventBombBegindefuse>(OnBombBeginDefuse);
+    Core.Logger.LogDebug("[VIP_FastDefuse] Loaded, hooking bomb events");
+    Core.GameEvent.HookPost<EventBombBegindefuse>(OnBombBeginDefuse);
     Core.GameEvent.HookPost<EventBombDefused>(OnBombDefused);
     Core.GameEvent.HookPost<EventBombAbortdefuse>(OnBombAbortDefuse);
     RegisterVipFeaturesWhenReady();
@@ -88,32 +91,47 @@ public partial class VIP_FastDefuse : BasePlugin {
 
   private HookResult OnBombBeginDefuse(EventBombBegindefuse @event)
   {
+    Core.Logger.LogDebug("[VIP_FastDefuse] bomb_begindefuse fired (vipApi null: {Null})", _vipApi == null);
     if (_vipApi == null) return HookResult.Continue;
 
-    var defuserController = @event.UserIdController;
-    if (defuserController == null || !defuserController.IsValid) return HookResult.Continue;
+    var player = @event.UserIdPlayer;
+    var controller = @event.UserIdController ?? player?.Controller as CCSPlayerController;
+    if (controller == null || !controller.IsValid)
+    {
+      Core.Logger.LogDebug("[VIP_FastDefuse] No valid controller in event");
+      return HookResult.Continue;
+    }
 
-    var controller = defuserController;
-    if (!controller.PawnIsAlive) return HookResult.Continue;
+    if (player == null || !player.IsValid)
+      player = Core.PlayerManager.GetPlayerFromController(controller);
+
+    if (player == null || !player.IsValid || player.IsFakeClient)
+    {
+      Core.Logger.LogDebug("[VIP_FastDefuse] No valid player (or fake client)");
+      return HookResult.Continue;
+    }
 
     var pawn = controller.PlayerPawn.Value;
-    if (pawn == null || !pawn.IsValid) return HookResult.Continue;
+    if (pawn == null || !pawn.IsValid)
+    {
+      Core.Logger.LogDebug("[VIP_FastDefuse] No valid pawn");
+      return HookResult.Continue;
+    }
 
-    var player = @event.UserIdPlayer;
-    if (player == null || !player.IsValid)
-      player = Core.PlayerManager.GetPlayerFromPawn(pawn);
-
-    if (player == null || !player.IsValid || player.IsFakeClient) return HookResult.Continue;
-
-    if (!_vipApi.IsClientVip(player)) return HookResult.Continue;
-    if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled) return HookResult.Continue;
+    var isVip = _vipApi.IsClientVip(player);
+    var state = _vipApi.GetPlayerFeatureState(player, FeatureKey);
+    Core.Logger.LogDebug("[VIP_FastDefuse] {PlayerName}: vip={IsVip}, featureState={State}", controller.PlayerName, isVip, state);
+    if (!isVip || state != FeatureState.Enabled) return HookResult.Continue;
 
     var pawnBase = pawn as CCSPlayerPawnBase;
     if (pawnBase == null) return HookResult.Continue;
 
     var plantedC4 = GetPlantedC4();
-
-    if (plantedC4 == null || !plantedC4.IsValid || plantedC4.CannotBeDefused) return HookResult.Continue;
+    if (plantedC4 == null || !plantedC4.IsValid || plantedC4.CannotBeDefused)
+    {
+      Core.Logger.LogDebug("[VIP_FastDefuse] Planted C4 missing/invalid/cannot be defused");
+      return HookResult.Continue;
+    }
 
     var currentTime = Core.Engine.GlobalVars.CurrentTime;
     var defaultDefuseSeconds = @event.HasKit ? DefaultDefuseTimeKitSeconds : DefaultDefuseTimeNoKitSeconds;
@@ -158,48 +176,49 @@ public partial class VIP_FastDefuse : BasePlugin {
     if (newRemaining < 0.25f)
       newRemaining = 0.25f;
 
+    Core.Logger.LogDebug("[VIP_FastDefuse] {PlayerName} started defuse (kit={HasKit}), remaining={Remaining:F2}s, newRemaining={NewRemaining:F2}s",
+      controller.PlayerName, @event.HasKit, remaining, newRemaining);
+
     var token = ++_defuseTokenCounter;
     _defuseTokenByControllerIndex[controller.Index] = token;
 
-    Core.Scheduler.NextTick(() =>
+    var startTime = currentTime;
+    var endTime = startTime + newRemaining;
+    var barDuration = Math.Max(1, (int)MathF.Ceiling(newRemaining));
+
+    bool IsActive() =>
+      controller != null && controller.IsValid &&
+      plantedC4 != null && plantedC4.IsValid &&
+      _defuseTokenByControllerIndex.TryGetValue(controller.Index, out var t) && t == token;
+
+    void Enforce()
     {
-      if (controller == null || !controller.IsValid) return;
-      if (_defuseTokenByControllerIndex.TryGetValue(controller.Index, out var t) && t != token) return;
+      if (!IsActive()) return;
 
-      if (plantedC4 == null || !plantedC4.IsValid) return;
+      plantedC4.DefuseLength = newRemaining;
+      plantedC4.DefuseLengthUpdated();
 
-      void ApplyNow()
-      {
-        if (controller == null || !controller.IsValid) return;
-        if (_defuseTokenByControllerIndex.TryGetValue(controller.Index, out var t2) && t2 != token) return;
-        if (plantedC4 == null || !plantedC4.IsValid) return;
+      plantedC4.DefuseCountDown.Value = endTime;
+      plantedC4.DefuseCountDownUpdated();
 
-        plantedC4.DefuseLength = newRemaining;
-        plantedC4.DefuseLengthUpdated();
+      pawnBase.ProgressBarStartTime = endTime - barDuration;
+      pawnBase.ProgressBarStartTimeUpdated();
+      pawnBase.ProgressBarDuration = barDuration;
+      pawnBase.ProgressBarDurationUpdated();
+    }
 
-        plantedC4.DefuseCountDown.Value = Core.Engine.GlobalVars.CurrentTime + newRemaining;
-        plantedC4.DefuseCountDownUpdated();
+    void Tick()
+    {
+      if (!IsActive()) return;
+      if (Core.Engine.GlobalVars.CurrentTime > endTime + 1.0f) return;
 
-        TrySetMember(plantedC4, "LastDefuseTime", Core.Engine.GlobalVars.CurrentTime);
-        TrySetMember(plantedC4, "FLastDefuseTime", Core.Engine.GlobalVars.CurrentTime);
-        TrySetMember(plantedC4, "ProgressBarTime", (int)MathF.Ceiling(newRemaining));
-        TrySetMember(plantedC4, "IProgressBarTime", (int)MathF.Ceiling(newRemaining));
+      Enforce();
+      Core.Scheduler.DelayBySeconds(0.05f, Tick);
+    }
 
-        pawnBase.ProgressBarStartTime = Core.Engine.GlobalVars.CurrentTime;
-        pawnBase.ProgressBarStartTimeUpdated();
-
-        pawnBase.ProgressBarDuration = Math.Max(1, (int)MathF.Ceiling(newRemaining));
-        pawnBase.ProgressBarDurationUpdated();
-      }
-
-      ApplyNow();
-
-      for (var i = 1; i <= 10; i++)
-      {
-        var delay = i * 0.05f;
-        Core.Scheduler.DelayBySeconds(delay, ApplyNow);
-      }
-    });
+    TrySetMember(plantedC4, "ProgressBarTime", barDuration);
+    Enforce();
+    Core.Scheduler.NextTick(Tick);
 
     return HookResult.Continue;
   }

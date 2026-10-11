@@ -167,6 +167,13 @@ public partial class VIP_FastReload : BasePlugin
 
         _vipApi.PlayerLoaded += OnPlayerLoaded;
         _vipApi.PlayerRemoved += OnPlayerRemoved;
+
+        for (var i = 0; i < Core.PlayerManager.PlayerCap && i < _fastReloadEnabled.Length; i++)
+        {
+            var existing = Core.PlayerManager.GetPlayer(i);
+            if (existing == null || !existing.IsValid || existing.IsFakeClient) continue;
+            _fastReloadEnabled[i] = _vipApi.GetPlayerFeatureState(existing, FeatureKey) == FeatureState.Enabled;
+        }
     }
 
     private void OnPlayerLoaded(IPlayer player, string group)

@@ -83,12 +83,12 @@ public partial class VIP_Vampirism : BasePlugin
         if (attackerId <= 0 || @event.UserId == attackerId) return HookResult.Continue;
 
         var attacker = Core.PlayerManager.GetPlayer(attackerId);
-        if (attacker == null || attacker.IsFakeClient || !attacker.IsValid) return HookResult.Continue;
+        if (attacker == null || !attacker.IsValid || attacker.IsFakeClient) return HookResult.Continue;
 
         if (!_vipApi.IsClientVip(attacker)) return HookResult.Continue;
         if (_vipApi.GetPlayerFeatureState(attacker, FeatureKey) != FeatureState.Enabled) return HookResult.Continue;
 
-        var dmgHealth = @event.ActualDmgHealth;
+        var dmgHealth = @event.DmgHealth;
         if (dmgHealth <= 0) return HookResult.Continue;
 
         var config = _vipApi.GetFeatureValue<VampirismConfig>(attacker, FeatureKey);
@@ -123,7 +123,7 @@ public partial class VIP_Vampirism : BasePlugin
         if (attackerId <= 0 || @event.UserId == attackerId) return HookResult.Continue;
 
         var attacker = Core.PlayerManager.GetPlayer(attackerId);
-        if (attacker == null || attacker.IsFakeClient || !attacker.IsValid) return HookResult.Continue;
+        if (attacker == null || !attacker.IsValid || attacker.IsFakeClient) return HookResult.Continue;
         if (!_vipApi.IsClientVip(attacker)) return HookResult.Continue;
         if (_vipApi.GetPlayerFeatureState(attacker, FeatureKey) != FeatureState.Enabled) return HookResult.Continue;
 
