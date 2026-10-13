@@ -81,7 +81,7 @@ public class MenuService(ISwiftlyCore core, FeatureService featureService, Cooki
                 {
                     var valueKey = feature.Key + ".value";
                     var value = cookieService.GetCookie<int>(player.SteamID, valueKey);
-                    stateText = value == 0
+                    stateText = value <= 0
                         ? $" [{localizer["chat.Disabled"]}]"
                         : $" [{value}]";
                 }

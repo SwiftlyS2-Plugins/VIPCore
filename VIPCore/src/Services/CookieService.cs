@@ -26,20 +26,6 @@ public class CookieService(ISwiftlyCore core)
         // Cookies plugin handles persistence.
     }
 
-    public void LoadForPlayer(SwiftlyS2.Shared.Players.IPlayer player)
-    {
-        if (_playerCookiesApi == null) return;
-
-        try
-        {
-            _playerCookiesApi.Load(player);
-        }
-        catch (Exception ex)
-        {
-            core.Logger.LogWarning(ex, "[VIPCore] Cookies API Load failed.");
-        }
-    }
-
     public void SetCookie<T>(ulong steamId, string key, T value)
     {
         if (steamId <= 0) return;

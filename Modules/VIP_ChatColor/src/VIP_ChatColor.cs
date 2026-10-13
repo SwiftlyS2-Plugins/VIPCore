@@ -147,6 +147,8 @@ public partial class VIP_ChatColor : BasePlugin
             {
                 var idx = _vipApi.GetPlayerCookie<int>(player, "vip.tag.value");
                 var tags = _vipApi.GetFeatureValue<List<string>>(player, "vip.tag");
+                if (idx == 0 && tags != null && tags.Count > 0)
+                    idx = 1;
                 if (idx > 0 && tags != null && idx <= tags.Count && !string.IsNullOrWhiteSpace(tags[idx - 1]))
                     tagPrefix = tags[idx - 1] + " ";
             }

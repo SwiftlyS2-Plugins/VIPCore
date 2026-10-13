@@ -223,8 +223,8 @@ public class VipService(
                 continue;
             }
 
-            var cookieVal = cookieService.GetCookie<int?>((ulong)user.account_id, feature.Key);
-            var restoredState = cookieVal.HasValue ? (FeatureState)cookieVal.Value : FeatureState.Enabled;
+            var cookieVal = cookieService.GetCookie<int?>((ulong)ToSteamId64(user.account_id), feature.Key);
+            var restoredState = cookieVal.HasValue && Enum.IsDefined(typeof(FeatureState), cookieVal.Value) ? (FeatureState)cookieVal.Value : FeatureState.Enabled;
             if (restoredState == FeatureState.NoAccess) restoredState = FeatureState.Enabled;
             user.FeatureStates[feature.Key] = restoredState;
         }
@@ -326,8 +326,8 @@ public class VipService(
                 continue;
             }
 
-            var cookieVal = cookieService.GetCookie<int?>((ulong)user.account_id, featureKey);
-            var restoredState = cookieVal.HasValue ? (FeatureState)cookieVal.Value : FeatureState.Enabled;
+            var cookieVal = cookieService.GetCookie<int?>((ulong)ToSteamId64(user.account_id), featureKey);
+            var restoredState = cookieVal.HasValue && Enum.IsDefined(typeof(FeatureState), cookieVal.Value) ? (FeatureState)cookieVal.Value : FeatureState.Enabled;
             if (restoredState == FeatureState.NoAccess) restoredState = FeatureState.Enabled;
             user.FeatureStates[featureKey] = restoredState;
 

@@ -159,6 +159,7 @@ public sealed partial class VIPCore : BasePlugin
                     Core.Scheduler.NextTick(() =>
                     {
                         if (!player.IsValid) return;
+                        _vipCoreApi?.RaisePlayerRemoved(player, expiredGroup);
                         var localizer = Core.Translation.GetPlayerLocalizer(player);
                         player.SendMessage(MessageType.Chat, localizer["vip.Expired", expiredGroup]);
                     });

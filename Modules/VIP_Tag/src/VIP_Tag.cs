@@ -3,6 +3,7 @@ using SwiftlyS2.Core.Menus.OptionsBase;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Commands;
+using SwiftlyS2.Shared.GameEventDefinitions;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Events;
 using SwiftlyS2.Shared.Players;
@@ -33,6 +34,8 @@ public partial class VIP_Tag : BasePlugin {
   private bool _chatHookRegistered;
 
   private readonly int[] _selectedTagIndices = new int[65];
+  private readonly bool[] _tagApplied = new bool[65];
+  private Guid _spawnHookGuid;
 
   public VIP_Tag(ISwiftlyCore core) : base(core)
   {
@@ -58,6 +61,7 @@ public partial class VIP_Tag : BasePlugin {
     _chatHookGuid = Core.Command.HookClientChat(OnClientChat);
     _chatHookRegistered = true;
 
+    _spawnHookGuid = Core.GameEvent.HookPost<EventPlayerSpawn>(OnPlayerSpawnEvent);
     Core.Event.OnClientDisconnected += OnClientDisconnected;
     RegisterVipFeaturesWhenReady();
   }
@@ -69,6 +73,7 @@ public partial class VIP_Tag : BasePlugin {
       _chatHookRegistered = false;
     }
 
+    Core.GameEvent.Unhook(_spawnHookGuid);
     Core.Event.OnClientDisconnected -= OnClientDisconnected;
 
     if (_vipApi != null)
@@ -217,13 +222,15 @@ public partial class VIP_Tag : BasePlugin {
 
     if (!save) return;
     if (_vipApi == null) return;
-    _vipApi.SetPlayerCookie(player, FeatureValueCookieKey, indexValue);
+    var cookieValue = indexValue <= 0 ? -1 : indexValue;
+    _vipApi.SetPlayerCookie(player, FeatureValueCookieKey, cookieValue);
   }
 
   private void OnClientDisconnected(IOnClientDisconnectedEvent @event)
   {
     if (@event.PlayerId < 0 || @event.PlayerId >= _selectedTagIndices.Length) return;
     _selectedTagIndices[@event.PlayerId] = 0;
+    _tagApplied[@event.PlayerId] = false;
   }
 
   private void OnPlayerLoaded(IPlayer player, string group)
@@ -246,11 +253,21 @@ public partial class VIP_Tag : BasePlugin {
     ScheduleApplyAttempt(player, attempt: 1);
   }
 
+  private HookResult OnPlayerSpawnEvent(EventPlayerSpawn @event)
+  {
+    var player = @event.UserIdPlayer;
+    if (player == null) return HookResult.Continue;
+
+    OnPlayerSpawn(player);
+    return HookResult.Continue;
+  }
+
   private void OnPlayerSpawn(IPlayer player)
   {
     if (_vipApi == null) return;
     if (!player.IsValid || player.IsFakeClient) return;
     if (player.Slot < 0 || player.Slot >= _selectedTagIndices.Length) return;
+    if (!_vipApi.IsClientVip(player)) return;
 
     if (!_vipApi.PlayerHasFeature(player, FeatureKey))
       _selectedTagIndices[player.Slot] = 0;
@@ -269,7 +286,18 @@ public partial class VIP_Tag : BasePlugin {
     try
     {
       var idx = _vipApi.GetPlayerCookie<int>(player, FeatureValueCookieKey);
-      _selectedTagIndices[player.Slot] = idx;
+      if (idx == 0)
+      {
+        var tags = _vipApi.GetFeatureValue<List<string>>(player, FeatureKey);
+        if (tags != null && tags.Count > 0)
+        {
+          _selectedTagIndices[player.Slot] = 1;
+          _vipApi.SetPlayerCookie(player, FeatureValueCookieKey, 1);
+          return;
+        }
+      }
+
+      _selectedTagIndices[player.Slot] = idx > 0 ? idx : 0;
     }
     catch
     {
@@ -314,8 +342,12 @@ public partial class VIP_Tag : BasePlugin {
       }
     }
 
+    var slot = player.Slot;
+    if (string.IsNullOrEmpty(tag) && !_tagApplied[slot]) return true;
+
     controller.Clan = tag;
     controller.ClanUpdated();
+    _tagApplied[slot] = !string.IsNullOrEmpty(tag);
 
     return true;
   }

@@ -112,7 +112,6 @@ public class VipCoreApiV1 : IVipCoreApiV1
     {
         if (_serviceProvider == null) return default!;
 
-        CookieService.LoadForPlayer(player);
         return CookieService.GetCookie<T>(player.SteamID, key);
     }
 
