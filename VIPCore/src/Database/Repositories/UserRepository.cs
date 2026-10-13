@@ -9,13 +9,13 @@ namespace VIPCore.Database.Repositories;
 
 public interface IUserRepository
 {
-    Task<User?> GetUserAsync(long accountId, long? serverId);
+    Task<User?> GetUserAsync(long accountId, long serverId, string group);
     Task<IEnumerable<User>> GetUserGroupsAsync(long accountId, long? serverId);
     Task<IEnumerable<User>> GetExpiredUsersAsync(long? serverId, long currentTime);
     Task AddUserAsync(User user);
     Task UpdateUserAsync(User user);
-    Task DeleteUserAsync(long accountId, long? serverId);
-    Task DeleteUserGroupAsync(long accountId, long? serverId, string group);
+    Task DeleteUserAsync(long accountId, long serverId);
+    Task DeleteUserGroupAsync(long accountId, long serverId, string group);
     Task<bool> ServerExistsAsync(string ip, int port);
     Task AddServerAsync(VipServer server);
     Task<long> GetServerIdAsync(string ip, int port);
@@ -41,15 +41,11 @@ public class UserRepository(DatabaseConnectionFactory connectionFactory) : IUser
             || msg.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase);
     }
 
-    public async Task<User?> GetUserAsync(long accountId, long? serverId)
+    public async Task<User?> GetUserAsync(long accountId, long serverId, string group)
     {
         using var db = connectionFactory.CreateConnection();
-        if (serverId.HasValue)
-        {
-            var users = await db.SelectAsync<User>(u => u.account_id == accountId && u.sid == serverId.Value);
-            return users.FirstOrDefault();
-        }
-        return (await db.SelectAsync<User>(u => u.account_id == accountId)).FirstOrDefault();
+        var users = await db.SelectAsync<User>(u => u.account_id == accountId && u.sid == serverId && u.group == group);
+        return users.FirstOrDefault();
     }
 
     public async Task<IEnumerable<User>> GetUserGroupsAsync(long accountId, long? serverId)
@@ -57,7 +53,7 @@ public class UserRepository(DatabaseConnectionFactory connectionFactory) : IUser
         using var db = connectionFactory.CreateConnection();
         if (serverId.HasValue)
         {
-            var users = await db.SelectAsync<User>(u => u.account_id == accountId && u.sid == serverId.Value);
+            var users = await db.SelectAsync<User>(u => u.account_id == accountId && (u.sid == serverId.Value || u.sid == 0));
             return users.ToList();
         }
         return (await db.SelectAsync<User>(u => u.account_id == accountId)).ToList();
@@ -68,7 +64,7 @@ public class UserRepository(DatabaseConnectionFactory connectionFactory) : IUser
         using var db = connectionFactory.CreateConnection();
         if (serverId.HasValue)
         {
-            var users = await db.SelectAsync<User>(u => u.sid == serverId.Value && u.expires < currentTime && u.expires > 0);
+            var users = await db.SelectAsync<User>(u => (u.sid == serverId.Value || u.sid == 0) && u.expires < currentTime && u.expires > 0);
             return users.ToList();
         }
         return (await db.SelectAsync<User>(u => u.expires < currentTime && u.expires > 0)).ToList();
@@ -93,37 +89,19 @@ public class UserRepository(DatabaseConnectionFactory connectionFactory) : IUser
         await db.UpdateAsync(user);
     }
 
-    public async Task DeleteUserAsync(long accountId, long? serverId)
+    public async Task DeleteUserAsync(long accountId, long serverId)
     {
         using var db = connectionFactory.CreateConnection();
-        if (serverId.HasValue)
-        {
-            var groups = await db.SelectAsync<User>(u => u.account_id == accountId && u.sid == serverId.Value);
-            foreach (var user in groups)
-                await db.DeleteAsync(user);
-        }
-        else
-        {
-            var groups = await db.SelectAsync<User>(u => u.account_id == accountId);
-            foreach (var user in groups)
-                await db.DeleteAsync(user);
-        }
+        var groups = await db.SelectAsync<User>(u => u.account_id == accountId && u.sid == serverId);
+        foreach (var user in groups)
+            await db.DeleteAsync(user);
     }
 
-    public async Task DeleteUserGroupAsync(long accountId, long? serverId, string group)
+    public async Task DeleteUserGroupAsync(long accountId, long serverId, string group)
     {
         using var db = connectionFactory.CreateConnection();
-        if (serverId.HasValue)
-        {
-            var user = new User { account_id = accountId, sid = serverId.Value, group = group, name = string.Empty };
-            await db.DeleteAsync(user);
-        }
-        else
-        {
-            var users = await db.SelectAsync<User>(u => u.account_id == accountId && u.group == group);
-            foreach (var user in users)
-                await db.DeleteAsync(user);
-        }
+        var user = new User { account_id = accountId, sid = serverId, group = group, name = string.Empty };
+        await db.DeleteAsync(user);
     }
 
     public async Task<bool> ServerExistsAsync(string ip, int port)
@@ -222,7 +200,7 @@ public class UserRepository(DatabaseConnectionFactory connectionFactory) : IUser
         using var db = connectionFactory.CreateConnection();
         if (serverId.HasValue)
         {
-            var users = await db.SelectAsync<User>(u => u.sid == serverId.Value);
+            var users = await db.SelectAsync<User>(u => u.sid == serverId.Value || u.sid == 0);
             return users.ToList();
         }
         return (await db.GetAllAsync<User>()).ToList();

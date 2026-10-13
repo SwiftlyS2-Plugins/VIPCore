@@ -9,7 +9,12 @@ public sealed partial class VIPCore
 {
     [Command("vip_deleteuser", registerRaw: true, permission: "vipcore.deleteuser")]
     [CommandAlias("vipdelete", registerRaw: true)]
-    public void OnDeleteUserCommand(ICommandContext context)
+    public void OnDeleteUserCommand(ICommandContext context) => DeleteUser(context, false);
+
+    [Command("vip_deleteglobal", registerRaw: true, permission: "vipcore.deleteglobal")]
+    public void OnDeleteGlobalCommand(ICommandContext context) => DeleteUser(context, true);
+
+    private void DeleteUser(ICommandContext context, bool global)
     {
         if (_serviceProvider == null)
         {
@@ -19,7 +24,7 @@ public sealed partial class VIPCore
 
         if (context.Args.Length < 1)
         {
-            context.Reply("Usage: vip_deleteuser <steamid>");
+            context.Reply($"Usage: {(global ? "vip_deleteglobal" : "vip_deleteuser")} <steamid>");
             return;
         }
 
@@ -35,10 +40,19 @@ public sealed partial class VIPCore
         {
             try
             {
-                await vipService.RemoveVip(steamId);
+                await vipService.RemoveVip(steamId, global);
                 Core.Scheduler.NextTick(() =>
                 {
-                    context.Reply($"Removed VIP: {steamId}");
+                    var target = FindOnlinePlayerBySteamId((ulong)VipService.ToSteamId64(steamId));
+                    if (target != null)
+                    {
+                        Task.Run(async () =>
+                        {
+                            try { await vipService.LoadPlayer(target); }
+                            catch (Exception ex) { Core.Logger.LogError(ex, "[VIPCore] Failed to reload VIP player {SteamId}", steamId); }
+                        });
+                    }
+                    context.Reply($"Removed {(global ? "global" : "local")} VIP: {steamId}");
                 });
             }
             catch (Exception ex)

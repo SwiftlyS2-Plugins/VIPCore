@@ -71,9 +71,13 @@ Define VIP groups and their features. Each group can optionally define a `Weight
 | Command | Permission | Description |
 |---------|-----------|-------------|
 | `!vip` | Player | Opens the VIP feature menu |
-| `vip_adduser <steamid> <group> <time>` | `vipcore.adduser` | Adds a player to a VIP group |
-| `vip_deleteuser <steamid>` | `vipcore.deleteuser` | Removes a player's VIP status |
-| `vip_manage` | `vipcore.manage` | Opens the VIP admin management menu |
+| `vip_adduser <steamid> <group> <time>` | `vipcore.adduser` | Adds a local VIP group |
+| `vip_addglobal <steamid> <group> <time>` | `vipcore.addglobal` | Adds a global VIP group shared across servers |
+| `vip_deleteuser <steamid>` | `vipcore.deleteuser` | Removes local VIP groups |
+| `vip_deleteglobal <steamid>` | `vipcore.deleteglobal` | Removes global VIP groups |
+| `vip_manage` | `vipcore.manage` | Opens the VIP admin management menu (both scopes) |
+
+Global grants use `sid = 0`; all participating servers must use the same database. A local grant wins a tie between groups of equal weight. Keep `ShareServerId` disabled to restrict local grants to their server; enabling it still shares every server's grants. Players already online on another server may need to reconnect after a grant changes.
 
 ## Building
 
