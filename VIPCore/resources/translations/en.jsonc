@@ -1,7 +1,7 @@
 {
   "menu.Title": "[[blue]VIP Menu - {0}[default]]",
   "vip.Prefix": "[blue] VIP[default] ",
-  "vip.WelcomeToTheServer": "Hello, [blue]{0}[default]! You are a VIP player.",
+  "vip.WelcomeToTheServer": "Hello, [blue]{0}[default]! You are a [blue]{1}[default] player.",
   "vip.Expires": "Your [blue]{0}[default] status expires [blue]{1}.",
   "vip.Expired": "Your [blue]{0}[default] status has expired.",
   "vip.Join.Permanent": "You have VIP [blue]{0}[default] permanently. Use [blue]!vip[default] to see the benefits.",

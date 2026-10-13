@@ -84,6 +84,8 @@ public sealed partial class VIPCore : BasePlugin
                     if (vipUser != null)
                     {
                         var localizer = Core.Translation.GetPlayerLocalizer(player);
+                        var displayName = player.Controller?.PlayerName ?? playerName ?? "unknown";
+                        player.SendMessage(MessageType.Chat, localizer["vip.WelcomeToTheServer", displayName, vipUser.group]);
 
                         if (vipUser.expires == 0)
                         {
