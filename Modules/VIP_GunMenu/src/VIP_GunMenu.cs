@@ -2,10 +2,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Commands;
+using SwiftlyS2.Shared.Menu;
+using SwiftlyS2.Shared.Menu.Components;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared.SchemaDefinitions;
-using SwiftlyS2.Core.Menus.OptionsBase;
 using System.Collections.Concurrent;
 using VIPCore.Contract;
 
@@ -175,49 +176,56 @@ public partial class VIP_GunMenu : BasePlugin
 
     private void OpenPrimaryGunsMenuForPlayer(IPlayer player, List<Gun> primaryGuns, GroupConfig config)
     {
-        var builder = Core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(Core.Localizer["vip.gun_menu.primary_menu_title"]);
+        var builder = Core.Menu.CreateMenu("vipcore.gun-menu.primary")
+            .AddHeader(new TitleComponent(Core.Localizer["vip.gun_menu.primary_menu_title"]) { Overflow = MenuTextOverflow.None });
 
         foreach (var gun in primaryGuns)
         {
-            var option = new ButtonMenuOption(gun.DisplayName);
-            option.Click += async (sender, args) =>
+            var option = new ButtonComponent(gun.DisplayName, async ctx =>
             {
-                GivePlayerWeapon(args.Player, gun, config.ReplaceCurrentWeapons);
+                GivePlayerWeapon(ctx.Player, gun, config.ReplaceCurrentWeapons);
 
                 if (config.GiveSecondariesAfterPrimaries && config.AvailableSecondaryGuns.Count > 0)
                 {
-                    OpenSecondaryGunsMenuForPlayer(args.Player, config.AvailableSecondaryGuns, config);
+                    OpenSecondaryGunsMenuForPlayer(ctx.Player, config.AvailableSecondaryGuns, config);
                 }
 
                 await ValueTask.CompletedTask;
-            };
-            builder.AddOption(option);
+            });
+            builder.Add(option);
         }
 
-        var menu = builder.Build();
-        Core.MenusAPI.OpenMenuForPlayer(player, menu);
+        OpenMenu(player, builder);
     }
 
     private void OpenSecondaryGunsMenuForPlayer(IPlayer player, List<Gun> secondaryGuns, GroupConfig config)
     {
-        var builder = Core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(Core.Localizer["vip.gun_menu.secondary_menu_title"]);
+        var builder = Core.Menu.CreateMenu("vipcore.gun-menu.secondary")
+            .AddHeader(new TitleComponent(Core.Localizer["vip.gun_menu.secondary_menu_title"]) { Overflow = MenuTextOverflow.None });
 
         foreach (var gun in secondaryGuns)
         {
-            var option = new ButtonMenuOption(gun.DisplayName);
-            option.Click += async (sender, args) =>
+            var option = new ButtonComponent(gun.DisplayName, async ctx =>
             {
-                GivePlayerWeapon(args.Player, gun, config.ReplaceCurrentWeapons);
-                Core.MenusAPI.CloseActiveMenu(args.Player);
+                GivePlayerWeapon(ctx.Player, gun, config.ReplaceCurrentWeapons);
                 await ValueTask.CompletedTask;
-            };
-            builder.AddOption(option);
+            }) { CloseOnSelect = true };
+            builder.Add(option);
         }
 
+        OpenMenu(player, builder);
+    }
+
+    private static void OpenMenu(IPlayer player, IMenuBuilder builder)
+    {
         var menu = builder.Build();
-        Core.MenusAPI.OpenMenuForPlayer(player, menu);
+        // The classic builder filled an empty menu with SwiftlyS2's own "No options" row; Core.Menu draws only the title.
+        if (menu.GetComponents(MenuRegion.Body).Count == 0)
+        {
+            menu.Add(MenuRegion.Body, new NoOptionsComponent());
+        }
+
+        menu.Open(player);
     }
 
     private bool IsPistolRound()
@@ -302,5 +310,11 @@ public partial class VIP_GunMenu : BasePlugin
             if (_isFeatureRegistered)
                 _vipApi.UnregisterFeature(FeatureKey);
         }
+    }
+
+    private sealed class NoOptionsComponent : TextComponent
+    {
+        public override MenuNode Render(IMenuComponentRenderContext context)
+            => new MenuTextNode(context.Translate("menu.default_option"), Style);
     }
 }

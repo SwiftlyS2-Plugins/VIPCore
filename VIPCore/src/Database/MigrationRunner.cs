@@ -1,4 +1,6 @@
 using System.Data;
+using FluentMigrator;
+using FluentMigrator.Infrastructure;
 using FluentMigrator.Runner;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -24,6 +26,16 @@ public static class MigrationRunner
         using var scope = serviceProvider.CreateScope();
         var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
         runner.MigrateUp();
+
+        // MigrateUp trusts the version table, so it never recreates a table dropped after its migration ran.
+        // Replay the existence-guarded migrations untracked; the dry run keeps healthy boots silent.
+        foreach (var migration in new IMigration[] { new Migration001(), new Migration002(), new Migration003() })
+        {
+            var dryRun = new MigrationContext(runner.Processor, scope.ServiceProvider, dbConnection.ConnectionString);
+            migration.GetUpExpressions(dryRun);
+            if (dryRun.Expressions.Count > 0)
+                runner.Up(migration);
+        }
     }
 
     private static void ConfigureDatabase(IMigrationRunnerBuilder rb, IDbConnection dbConnection)

@@ -1,8 +1,8 @@
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
-using SwiftlyS2.Shared.Menus;
+using SwiftlyS2.Shared.Menu;
+using SwiftlyS2.Shared.Menu.Components;
 using SwiftlyS2.Shared.Translation;
-using SwiftlyS2.Core.Menus.OptionsBase;
 using VIPCore.Contract;
 using VIPCore.Config;
 using Microsoft.Extensions.Configuration;
@@ -31,9 +31,8 @@ public class MenuService(ISwiftlyCore core, FeatureService featureService, Cooki
         var localizer = core.Translation.GetPlayerLocalizer(player);
         var title = localizer["menu.Title", user.group];
 
-        var builder = core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(title);
-        builder.SetPlayerFrozen(config.FreezeMenu);
+        var builder = core.Menu.CreateMenu("vipcore.main")
+            .AddHeader(new TitleComponent(title) { Overflow = MenuTextOverflow.None });
         
         var groupName = groupsConfig.Groups.Keys.FirstOrDefault(k => k.Equals(user.group, StringComparison.OrdinalIgnoreCase));
         if (groupName == null || !groupsConfig.Groups.TryGetValue(groupName, out var groupConfig))
@@ -97,10 +96,9 @@ public class MenuService(ISwiftlyCore core, FeatureService featureService, Cooki
             var itemTitle = displayName + stateText;
             var isDisabled = state == FeatureState.NoAccess || featureService.IsFeatureForcedDisabled(feature.Key);
 
-            var option = new ButtonMenuOption(itemTitle) { Enabled = !isDisabled };
             var thisOptionIndex = optionIndex;
             optionIndex++;
-            option.Click += async (sender, args) =>
+            var option = new ButtonComponent(itemTitle, async ctx =>
             {
                 if (isDisabled) return;
 
@@ -112,31 +110,36 @@ public class MenuService(ISwiftlyCore core, FeatureService featureService, Cooki
                         user.FeatureStates[feature.Key] = newState;
                         cookieService.SetCookie(player.SteamID, feature.Key, (int)newState);
                         
-                        feature.OnSelectItem?.Invoke(args.Player, newState);
+                        feature.OnSelectItem?.Invoke(ctx.Player, newState);
                         
-                        OpenVipMenu(args.Player, user, thisOptionIndex);
+                        OpenVipMenu(ctx.Player, user, thisOptionIndex);
                     }
                     else if (feature.FeatureType == FeatureType.Selectable)
                     {
-                        feature.OnSelectItem?.Invoke(args.Player, state);
-                        core.Scheduler.NextTick(() => OpenVipMenu(args.Player, user, thisOptionIndex));
+                        feature.OnSelectItem?.Invoke(ctx.Player, state);
+                        core.Scheduler.NextTick(() => OpenVipMenu(ctx.Player, user, thisOptionIndex));
                     }
                 });
                 
                 await ValueTask.CompletedTask;
-            };
+            }) { Enabled = !isDisabled };
 
-            builder.AddOption(option);
+            builder.Add(option);
         }
 
-        var menu = builder.Build();
-        core.MenusAPI.OpenMenuForPlayer(player, menu);
+        var menu = builder.Build().WithDefaultOption();
+        if (config.FreezeMenu)
+        {
+            menu.FreezeWhileOpen(core);
+        }
+
+        var session = menu.Open(player);
         if (selectedIndex.HasValue)
         {
             var idx = selectedIndex.Value;
             try
             {
-                menu.MoveToOptionIndex(player, idx);
+                session.SetFocus(idx);
             }
             catch
             {

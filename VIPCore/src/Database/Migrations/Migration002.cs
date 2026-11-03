@@ -7,12 +7,15 @@ public class Migration002 : Migration
 {
     public override void Up()
     {
-        Create.Table("vip_servers")
-            .WithColumn("serverId").AsInt64().NotNullable().PrimaryKey().Identity()
-            .WithColumn("serverIp").AsString(45).NotNullable()
-            .WithColumn("port").AsInt32().NotNullable()
-            .WithColumn("created_at").AsDateTime().WithDefault(SystemMethods.CurrentDateTime)
-            .WithColumn("updated_at").AsDateTime().Nullable();
+        if (!Schema.Table("vip_servers").Exists())
+        {
+            Create.Table("vip_servers")
+                .WithColumn("serverId").AsInt64().NotNullable().PrimaryKey().Identity()
+                .WithColumn("serverIp").AsString(45).NotNullable()
+                .WithColumn("port").AsInt32().NotNullable()
+                .WithColumn("created_at").AsDateTime().WithDefault(SystemMethods.CurrentDateTime)
+                .WithColumn("updated_at").AsDateTime().Nullable();
+        }
     }
 
     public override void Down()
