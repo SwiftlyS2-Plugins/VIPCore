@@ -1,5 +1,5 @@
 <Project>
   <PropertyGroup>
-    <SwiftlyS2Version>1.*-*</SwiftlyS2Version>
+    <SwiftlyS2Version>*-*</SwiftlyS2Version>
   </PropertyGroup>
 </Project>

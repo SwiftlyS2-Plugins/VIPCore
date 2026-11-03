@@ -1,9 +1,9 @@
 using System;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
-using SwiftlyS2.Core.Menus.OptionsBase;
 using SwiftlyS2.Shared;
-using SwiftlyS2.Shared.Menus;
+using SwiftlyS2.Shared.Menu;
+using SwiftlyS2.Shared.Menu.Components;
 using SwiftlyS2.Shared.Misc;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Plugins;
@@ -149,14 +149,13 @@ public partial class VIP_Fov : BasePlugin {
     private void OpenFovMenu(IPlayer player)
     {
         var localizer = Core.Translation.GetPlayerLocalizer(player);
-        var builder = Core.MenusAPI.CreateBuilder();
-        builder.Design.SetMenuTitle(localizer["fov.MenuTitle"]);
+        var builder = Core.Menu.CreateMenu("vipcore.fov");
+        builder.AddHeader(new TitleComponent(localizer["fov.MenuTitle"]) { Overflow = MenuTextOverflow.None });
 
         foreach (var fov in AllowedFovs)
         {
             var isCurrent = _fovSettings[player.Slot] == fov;
-            var option = new ButtonMenuOption(localizer["fov.Option", fov] + (isCurrent ? " *" : ""));
-            option.Click += (sender, args) =>
+            var option = new ButtonComponent(localizer["fov.Option", fov] + (isCurrent ? " *" : ""), _ =>
             {
                 Core.Scheduler.NextTick(() =>
                 {
@@ -166,12 +165,11 @@ public partial class VIP_Fov : BasePlugin {
                     OpenFovMenu(player);
                 });
                 return ValueTask.CompletedTask;
-            };
-            builder.AddOption(option);
+            });
+            builder.Add(option);
         }
 
-        var disableOption = new ButtonMenuOption(localizer["fov.Disable"]);
-        disableOption.Click += (sender, args) =>
+        var disableOption = new ButtonComponent(localizer["fov.Disable"], _ =>
         {
             Core.Scheduler.NextTick(() =>
             {
@@ -180,10 +178,10 @@ public partial class VIP_Fov : BasePlugin {
                 OpenFovMenu(player);
             });
             return ValueTask.CompletedTask;
-        };
-        builder.AddOption(disableOption);
+        });
+        builder.Add(disableOption);
 
-        Core.MenusAPI.OpenMenuForPlayer(player, builder.Build());
+        builder.Build().Open(player);
     }
 
     private void OnClientConnected(SwiftlyS2.Shared.Events.IOnClientConnectedEvent @event)
