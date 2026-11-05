@@ -13,15 +13,6 @@
     <AssemblyName>VIPCore.Contract</AssemblyName>
     <OutputPath>$(MSBuildThisFileDirectory)build/</OutputPath>
     <PublishDir>$(OutputPath)publish/VIPCore.Contract</PublishDir>
-    
-    <!-- NuGet Package Settings -->
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageId>SwiftlyS2.VIPCore.Contract</PackageId>
-    <PackageVersion>1.0.2</PackageVersion>
-    <Authors>aga</Authors>
-    <Description>Contract interfaces for VIPCore plugin system for SwiftlyS2</Description>
-    <PackageTags>swiftlys2;cs2;vip;plugin;contract</PackageTags>
-    <PackageOutputPath>$(MSBuildThisFileDirectory)../nupkgs</PackageOutputPath>
   </PropertyGroup>
 
   <ItemGroup>

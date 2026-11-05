@@ -1,6 +1,6 @@
 <div align="center">
   <img src="https://pan.samyyc.dev/s/VYmMXE" />
-  <h2><strong>SwiftlyS2.VIPCore.Contract</strong></h2>
+  <h2><strong>VIPCore.Contract</strong></h2>
   <h3>API contract for VIPCore module development.</h3>
 </div>
 
@@ -13,26 +13,39 @@
 
 ## Description
 
-VIPCore.Contract is now distributed as **`SwiftlyS2.VIPCore.Contract`** on NuGet.
+VIPCore.Contract ships with VIPCore as `resources/exports/VIPCore.Contract.dll`. VIP modules compile against it and bind to that exported copy at runtime.
+
+The `SwiftlyS2.VIPCore.Contract` NuGet package is no longer published; versions already on NuGet.org are frozen.
 
 ## Features
 
 - **API Interface** (`IVipCoreApiV1`) - Complete API for interacting with VIPCore
 - **Base Classes** (`VipFeatureBase`) - Simplified module development with built-in event handling
 - **Enums** - `FeatureState` and `FeatureType` for feature configuration
-- **NuGet Package** - Easy integration into module projects
+- **Ships with VIPCore** - Exported from `resources/exports/`, so every module binds to the same copy
 
 ## Usage
 
-Add the NuGet package to your module project:
+Copy `VIPCore.Contract.dll` from a VIPCore release (or server install) into your module and reference it:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="SwiftlyS2.VIPCore.Contract" Version="*" ExcludeAssets="runtime" PrivateAssets="all" />
+  <Reference Include="VIPCore.Contract">
+    <HintPath>lib\VIPCore.Contract.dll</HintPath>
+    <Private>false</Private>
+  </Reference>
 </ItemGroup>
 ```
 
-> **Note:** Use `ExcludeAssets="runtime" PrivateAssets="all"` because VIPCore is already loaded on the server at runtime.
+Modules inside the VIPCore repository reference the project instead:
+
+```xml
+<ItemGroup>
+  <ProjectReference Include="..\..\VIPCore.Contract\VIPCore.Contract.csproj" Private="false" />
+</ItemGroup>
+```
+
+> **Note:** `Private=false` keeps the contract out of your module's output — VIPCore is already loaded on the server and exports the copy every module binds to.
 
 ## API Overview
 
@@ -81,19 +94,13 @@ public class MyFeature : VipFeatureBase
 dotnet build -c Release
 ```
 
-## Publishing
+## Distribution
 
-The contract is published as a NuGet package to NuGet.org:
-
-```bash
-dotnet pack -c Release
-dotnet nuget push bin/Release/*.nupkg --api-key YOUR_KEY --source https://api.nuget.org/v3/index.json
-```
+The contract is not packaged separately. Building VIPCore builds this project and copies the DLL into VIPCore's `resources/exports/`, which every VIPCore release zip carries.
 
 ## See Also
 
 - [VIPCore Documentation](https://github.com/aga/VIPCore)
-- [NuGet Package](https://www.nuget.org/packages/SwiftlyS2.VIPCore.Contract)
 
 ## License
 

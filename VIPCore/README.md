@@ -28,7 +28,7 @@ VIPCore is the central VIP management plugin for SwiftlyS2. It provides database
 ## Installation
 
 1. Place `VIPCore.dll` in `(swRoot)/plugins/VIPCore/`
-2. The API contract is distributed as a NuGet package: **`SwiftlyS2.VIPCore.Contract`** (use `Version="*"` for latest).
+2. Keep `resources/exports/VIPCore.Contract.dll` next to it — every VIP module binds to this copy of the API contract
 3. Configure `config.jsonc` and `vip_groups.jsonc` in the plugin config folder
 4. Ensure the [Cookies](https://github.com/SwiftlyS2-Plugins/Cookies) plugin is installed
 5. Restart the server

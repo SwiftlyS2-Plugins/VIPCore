@@ -22,7 +22,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SwiftlyS2.VIPCore.Contract" Version="1.0.2" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\VIPCore.Contract\VIPCore.Contract.csproj" Private="false" />
   </ItemGroup>
 
   <ItemGroup>

@@ -19,7 +19,10 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.13" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="Dapper" Version="2.1.89" ExcludeAssets="runtime" PrivateAssets="all" />
     <PackageReference Include="SwiftlyS2.CS2" Version="$(SwiftlyS2Version)" ExcludeAssets="runtime" PrivateAssets="all" />
-    <PackageReference Include="SwiftlyS2.VIPCore.Contract" Version="1.0.2" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\VIPCore.Contract\VIPCore.Contract.csproj" Private="false" />
   </ItemGroup>
 
   <ItemGroup>

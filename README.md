@@ -200,12 +200,12 @@ This repository ships several optional VIP modules (each one is a standalone Swi
 ## Creating VIP Module Plugins
 
 VIP modules are standalone SwiftlyS2 plugins that extend VIPCore with custom features (e.g., anti-flash, bhop, FOV, armor, etc.).  
-The API contract is distributed as a NuGet package: **`SwiftlyS2.VIPCore.Contract`** (use `Version="*"` for latest).
+The API contract is `VIPCore.Contract.dll`, which ships with VIPCore in `resources/exports/`. Modules compile against it and never ship their own copy.
 
 ### Prerequisites
 
 - [SwiftlyS2.CS2](https://www.nuget.org/packages/SwiftlyS2.CS2) NuGet package
-- [SwiftlyS2.VIPCore.Contract](https://www.nuget.org/packages/SwiftlyS2.VIPCore.Contract) NuGet package
+- `VIPCore.Contract.dll` — from a VIPCore release zip or server install (`VIPCore/resources/exports/`)
 
 > **Required dependency:** The [Cookies](https://github.com/SwiftlyS2-Plugins/Cookies) plugin must be installed on the server. VIPCore uses it to persist player feature preferences (enable/disable states) across sessions.
 
@@ -213,6 +213,8 @@ The API contract is distributed as a NuGet package: **`SwiftlyS2.VIPCore.Contrac
 
 ```
 VIP_YourFeature/
+├── lib/
+│   └── VIPCore.Contract.dll       (compile-time reference only)
 ├── src/
 │   └── VIP_YourFeature.cs
 ├── resources/
@@ -227,15 +229,20 @@ VIP_YourFeature/
 
 ### Step 1 — Create the Project File
 
-Create `VIP_YourFeature.csproj` and add the `SwiftlyS2.VIPCore.Contract` NuGet package:
+Create `VIP_YourFeature.csproj` and reference `VIPCore.Contract.dll` from your `lib/` folder:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="SwiftlyS2.VIPCore.Contract" Version="*" ExcludeAssets="runtime" PrivateAssets="all" />
+  <Reference Include="VIPCore.Contract">
+    <HintPath>lib\VIPCore.Contract.dll</HintPath>
+    <Private>false</Private>
+  </Reference>
 </ItemGroup>
 ```
 
-> **Note:** Use `ExcludeAssets="runtime" PrivateAssets="all"` because VIPCore is already loaded on the server at runtime — you only need the contract at compile time.
+> **Note:** `Private=false` keeps the contract out of your build output — VIPCore is already loaded on the server and exports the one copy every module binds to, so you only need it at compile time. Modules inside this repository use `<ProjectReference Include="..\..\VIPCore.Contract\VIPCore.Contract.csproj" Private="false" />` instead.
+
+> The `SwiftlyS2.VIPCore.Contract` NuGet package is no longer published; versions already on NuGet.org are frozen and may lag behind the contract VIPCore ships.
 
 ---
 
