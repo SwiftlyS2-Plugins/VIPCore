@@ -9,7 +9,7 @@ using VIPCore.Contract;
 
 namespace VIP_SmokeColor;
 
-[PluginMetadata(Id = "VIP_SmokeColor", Version = "1.0.0", Name = "VIP_SmokeColor", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_SmokeColor", Version = "1.0.1", Name = "VIP_SmokeColor", Author = "aga", Description = "No description.")]
 public partial class VIP_SmokeColor : BasePlugin {
   private const string FeatureKey = "vip.smokecolor";
   private const string SmokeProjectileDesignerName = "smokegrenade_projectile";
@@ -77,8 +77,26 @@ public partial class VIP_SmokeColor : BasePlugin {
       null,
       displayNameResolver: p => "Smoke Color"
     );
+    _vipApi.DescribeFeature(FeatureKey, Describe);
 
     _isFeatureRegistered = true;
+  }
+
+  // A missing or -1 component is rolled per smoke (see ClampColorComponent).
+  private string? Describe(IPlayer player)
+  {
+    try
+    {
+      var color = _vipApi?.GetFeatureValue<List<int>>(player, FeatureKey);
+      if (color == null) return null;
+
+      var random = color.Count < 3 || color.Take(3).Any(c => c == -1);
+      return Core.Translation.GetPlayerLocalizer(player)[random ? "vip.smokecolor.description.random" : "vip.smokecolor.description"];
+    }
+    catch
+    {
+      return null;
+    }
   }
 
   private void OnEntityCreated(IOnEntityCreatedEvent @event)

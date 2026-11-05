@@ -15,6 +15,8 @@
 
 VIP_Zeus is a VIPCore module that gives VIP players a Zeus x27 taser on player spawn. The taser is only given if the player doesn't already have one.
 
+In the VIP menu the perk reads *A Zeus x27 every spawn* (translation key `vip.zeus.description`).
+
 ## Installation
 
 1. Place `VIP_Zeus.dll` in `(swRoot)/plugins/VIP_Zeus/`

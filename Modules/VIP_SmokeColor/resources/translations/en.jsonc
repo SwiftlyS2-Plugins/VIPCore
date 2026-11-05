@@ -1,3 +1,5 @@
 {
-  "hello": "world"
+  "hello": "world",
+  "vip.smokecolor.description": "Your smokes come out colored",
+  "vip.smokecolor.description.random": "Your smokes come out in random colors"
 }

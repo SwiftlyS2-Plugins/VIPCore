@@ -35,12 +35,14 @@ public sealed partial class VIPCore
         }
 
         var vipService = _serviceProvider.GetRequiredService<VipService>();
+        var directory = _serviceProvider.GetRequiredService<VipDirectory>();
 
         Task.Run(async () =>
         {
             try
             {
                 await vipService.RemoveVip(steamId, global);
+                await directory.RefreshAsync(changed: true);
                 Core.Scheduler.NextTick(() =>
                 {
                     var target = FindOnlinePlayerBySteamId((ulong)VipService.ToSteamId64(steamId));

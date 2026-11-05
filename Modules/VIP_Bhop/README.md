@@ -15,6 +15,8 @@
 
 VIP_Bhop is a VIPCore module that enables bunnyhop (automatic jumping) for VIP players. The feature activates after a configurable delay at round start.
 
+In the VIP menu the perk reads, for example, *From 5 s in, up to 300 u/s*, filled in from the player's group (translation keys `vip.bhop.description*`). A `Timer` of 0 reads *Right away* and a `MaxSpeed` of 0 (no cap) reads *no speed cap*.
+
 ## Installation
 
 1. Place `VIP_Bhop.dll` in `(swRoot)/plugins/VIP_Bhop/`

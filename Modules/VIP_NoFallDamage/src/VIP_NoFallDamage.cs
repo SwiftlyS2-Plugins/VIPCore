@@ -10,7 +10,7 @@ using VIPCore.Contract;
 
 namespace VIP_NoFallDamage;
 
-[PluginMetadata(Id = "VIP_NoFallDamage", Version = "1.0.0", Name = "VIP_NoFallDamage", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_NoFallDamage", Version = "1.0.1", Name = "VIP_NoFallDamage", Author = "aga", Description = "No description.")]
 public partial class VIP_NoFallDamage : BasePlugin {
   private const string FeatureKey = "vip.nofalldamage";
 
@@ -80,6 +80,7 @@ public partial class VIP_NoFallDamage : BasePlugin {
       null,
       displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.nofalldamage"]
     );
+    _vipApi.DescribeFeature(FeatureKey, p => Core.Translation.GetPlayerLocalizer(p)["vip.nofalldamage.description"]);
 
     _isFeatureRegistered = true;
   }

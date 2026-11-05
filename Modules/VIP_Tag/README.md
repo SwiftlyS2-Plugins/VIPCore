@@ -13,7 +13,7 @@
 
 ## Description
 
-VIP_Tag is a VIPCore module that allows VIP players to have custom clan tags. Players can cycle through multiple tags defined for their VIP group.
+VIP_Tag is a VIPCore module that gives VIP players a chat tag, also set as their scoreboard clan tag. In the VIP menu the perk is called **Chat tag** and reads *Before your name in chat* (translation key `vip.tag.description`). Players pick one of their group's tags, or *No tag*, on the **Customize** page of the VIP menu (`!vip`); selecting the perk anywhere else in the VIP menu opens that page.
 
 ## Installation
 
@@ -55,12 +55,13 @@ Add the tag feature to your `vip_groups.jsonc` file:
 
 | Format | Description |
 |--------|-------------|
-| `["tag1", "tag2", ...]` | Array of clan tags players can cycle through |
+| `["tag1", "tag2", ...]` | Clan tags players can pick from |
 
 ### How It Works
 
-- Players can cycle through the available tags using the VIP menu
-- Setting index 0 disables the tag
+- Players pick a tag, or *No tag*, on the VIP menu's Customize page
+- A tag may use chat colour markup such as `[gold][PREMIUM]` (the tags listed in VIP_ChatColor's README); the menu lists it without the markup, in the colour most of it is drawn in. The scoreboard clan tag shows the text exactly as written, markup included
+- Until a player picks, the first tag is used
 - The selected tag is saved via cookies and persists across sessions
 
 ## Building

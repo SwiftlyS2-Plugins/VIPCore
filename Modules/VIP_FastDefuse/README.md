@@ -15,6 +15,8 @@
 
 VIP_FastDefuse is a VIPCore module that reduces the bomb defuse time for VIP players.
 
+In the VIP menu the perk reads, for example, *Defuses 2× faster*, or *Defuses in 3 s* when the group sets `Seconds` (translation keys `vip.fastdefuse.description*`).
+
 ## Installation
 
 1. Place `VIP_FastDefuse.dll` in `(swRoot)/plugins/VIP_FastDefuse/`

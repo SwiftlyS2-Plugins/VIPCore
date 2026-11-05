@@ -15,6 +15,8 @@
 
 VIP_SmokeColor is a VIPCore module that gives VIP players custom smoke grenade colors. Each VIP group can have its own smoke color defined by RGB values.
 
+In the VIP menu the perk reads *Your smokes come out colored*, or *Your smokes come out in random colors* when a component is `-1` or missing (translation keys `vip.smokecolor.description*`).
+
 ## Installation
 
 1. Place `VIP_SmokeColor.dll` in `(swRoot)/plugins/VIP_SmokeColor/`

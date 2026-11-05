@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
@@ -10,7 +11,7 @@ using VIPCore.Contract;
 
 namespace VIP_Money;
 
-[PluginMetadata(Id = "VIP_Money", Version = "1.0.0", Name = "VIP_Money", Author = "aga", Description = "Gives money to VIP players")]
+[PluginMetadata(Id = "VIP_Money", Version = "1.0.1", Name = "VIP_Money", Author = "aga", Description = "Gives money to VIP players")]
 public partial class VIP_Money : BasePlugin {
   private const string FeatureKey = "vip.money";
   
@@ -99,8 +100,25 @@ public partial class VIP_Money : BasePlugin {
       null,
       displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.money"]
     );
+    _vipApi.DescribeFeature(FeatureKey, Describe);
 
     _isFeatureRegistered = true;
+  }
+
+  // "500" and "++500" both add $500 (see TryApplyMoney).
+  private string? Describe(IPlayer player)
+  {
+    try
+    {
+      var money = (_vipApi?.GetFeatureValue<MoneyConfig>(player, FeatureKey)?.Money ?? "").Replace("++", "").Trim();
+      return int.TryParse(money, NumberStyles.Integer, CultureInfo.InvariantCulture, out var amount) && amount > 0
+        ? Core.Translation.GetPlayerLocalizer(player)["vip.money.description", amount.ToString("N0", CultureInfo.InvariantCulture)]
+        : null;
+    }
+    catch
+    {
+      return null;
+    }
   }
 
   private HookResult OnRoundEnd(EventRoundEnd @event)

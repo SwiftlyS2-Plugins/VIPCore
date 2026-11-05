@@ -15,6 +15,8 @@
 
 VIP_Health is a VIPCore module that gives VIP players increased health and max health when they spawn. The health amount is configurable per VIP group.
 
+In the VIP menu the perk reads, for example, *150 HP on spawn*, filled in from the player's group (translation key `vip.health.description`).
+
 ## Installation
 
 1. Place `VIP_Health.dll` in `(swRoot)/plugins/VIP_Health/`

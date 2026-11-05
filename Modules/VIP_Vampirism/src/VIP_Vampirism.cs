@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
@@ -11,7 +12,7 @@ using SwiftlyS2.Shared.Players;
 
 namespace VIP_Vampirism;
 
-[PluginMetadata(Id = "VIP_Vampirism", Version = "1.0.0", Name = "VIP_Vampirism", Author = "aga, shmitz", Description = "Retruns HP to attacker based on configured logic")]
+[PluginMetadata(Id = "VIP_Vampirism", Version = "1.0.1", Name = "VIP_Vampirism", Author = "aga, shmitz", Description = "Retruns HP to attacker based on configured logic")]
 public partial class VIP_Vampirism : BasePlugin
 {
     private const string FeatureKey = "vip.vampirism";
@@ -70,8 +71,34 @@ public partial class VIP_Vampirism : BasePlugin
             null,
             displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.vampirism"]
         );
+        _vipApi.DescribeFeature(FeatureKey, Describe);
 
         _isFeatureRegistered = true;
+    }
+
+    private string? Describe(IPlayer player)
+    {
+        try
+        {
+            var config = _vipApi?.GetFeatureValue<VampirismConfig>(player, FeatureKey);
+            if (config == null) return null;
+
+            var localizer = Core.Translation.GetPlayerLocalizer(player);
+            var percent = config.Percent.ToString("0.##", CultureInfo.InvariantCulture);
+            var flat = config.Flat.ToString(CultureInfo.InvariantCulture);
+            return (config.GiveHealthMode, config.HealthReturnMode) switch
+            {
+                (GiveHealthMode.OnDamage, HealthMode.Percent) when config.Percent > 0 => localizer["vip.vampirism.description", percent],
+                (GiveHealthMode.OnDamage, HealthMode.Flat) when config.Flat > 0 => localizer["vip.vampirism.description.hit_flat", flat],
+                (GiveHealthMode.OnKill, HealthMode.Percent) when config.Percent > 0 => localizer["vip.vampirism.description.kill_percent", percent],
+                (GiveHealthMode.OnKill, HealthMode.Flat) when config.Flat > 0 => localizer["vip.vampirism.description.kill_flat", flat],
+                _ => null,
+            };
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     [GameEventHandler(HookMode.Post)]

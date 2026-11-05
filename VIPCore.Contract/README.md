@@ -65,6 +65,24 @@ Modules inside the VIPCore repository reference the project instead:
 | `GiveClientVip()` | Grant VIP to player |
 | `RemoveClientVip()` | Remove VIP from player |
 
+### Menus and read-only views (contract 1.1.0, VIPCore 1.2.0)
+
+| Member | Description |
+|--------|-------------|
+| `DescribeFeature(key, player => line)` | The line menus show under a feature's name ("120 HP on spawn"); return null when the player's group has no setting |
+| `RegisterFeatureOptions(key, options, current, choose)` | Lists a Selectable feature's choices on the Customize page instead of a menu of its own |
+| `RegisterMenuPage(VipMenuPage)` / `UnregisterMenuPage(id)` | Adds a module's own page (the gun menu) to the VIP menu |
+| `OpenMenu(player, pageId?)` | Opens the VIP menu, or one of its pages (`VipMenuIds` or a module page's id) with the menu as its parent |
+| `GetFeatureView(player, key)` | A feature as the player's menu shows it: name, description, current value, state, whether it is locked |
+| `GetClientVipGrants(player)` | Every group the player holds, the active one first, with scope, expiry and grant date |
+| `GetGroupInfos()` | The configured groups, lowest weight first, with how many features each grants |
+
+A module that calls these needs VIPCore 1.2.0 or later: an older VIPCore exports the 1.0 contract, and the first call into one of them throws `MissingMethodException`.
+
+### Menu rows
+
+Every row of VIPCore's menus carries a record as its component `Tag`, so a renderer can draw it from data instead of parsing its text: `VipFeatureRow` (a perk), `VipSectionRow` (a heading over a feature's or a group's choices), `VipOptionRow` (one choice, `Selected` when in use), `VipUserRow`, `VipGrantRow`, `VipLengthRow`, `VipPlayerRow`, `VipGroupRow`, `VipScopeRow` and `VipActionRow` (an action or a summary line). A changed row gets a new record and its session is invalidated. A module page built the same way (sections and options, a `VipActionRow` summary and submit, a `VipFeatureLimit` as the menu's `Tag`) is drawn like VIPCore's own.
+
 ### Enums
 
 ```csharp

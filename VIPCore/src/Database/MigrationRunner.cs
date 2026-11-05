@@ -29,7 +29,7 @@ public static class MigrationRunner
 
         // MigrateUp trusts the version table, so it never recreates a table dropped after its migration ran.
         // Replay the existence-guarded migrations untracked; the dry run keeps healthy boots silent.
-        foreach (var migration in new IMigration[] { new Migration001(), new Migration002(), new Migration003() })
+        foreach (var migration in new IMigration[] { new Migration001(), new Migration002(), new Migration003(), new Migration004() })
         {
             var dryRun = new MigrationContext(runner.Processor, scope.ServiceProvider, dbConnection.ConnectionString);
             migration.GetUpExpressions(dryRun);

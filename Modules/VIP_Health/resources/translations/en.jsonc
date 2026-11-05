@@ -1,3 +1,4 @@
 {
-  "vip.health": "Health"
+  "vip.health": "Health",
+  "vip.health.description": "{0} HP on spawn"
 }

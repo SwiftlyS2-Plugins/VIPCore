@@ -6,6 +6,7 @@ using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Translation;
 using Cookies.Contract;
 using VIPCore.Services;
+using VIPCore.Services.Menus;
 using VIPCore.Database;
 using VIPCore.Database.Repositories;
 using VIPCore.Config;
@@ -19,7 +20,7 @@ using System.IO;
 
 namespace VIPCore;
 
-[PluginMetadata(Id = "VIPCore", Version = "1.1.7", Name = "VIPCore", Author = "aga", Description = "Core VIP management plugin ported to SwiftlyS2.")]
+[PluginMetadata(Id = "VIPCore", Version = "1.2.0", Name = "VIPCore", Author = "aga", Description = "Core VIP management plugin ported to SwiftlyS2.")]
 public sealed partial class VIPCore : BasePlugin
 {
     private VipConfig? _config;
@@ -193,11 +194,13 @@ public sealed partial class VIPCore : BasePlugin
         if (_serviceProvider == null) return;
 
         var serverIdentifier = _serviceProvider.GetRequiredService<ServerIdentifier>();
+        var directory = _serviceProvider.GetRequiredService<VipDirectory>();
         Task.Run(async () =>
         {
             try
             {
                 await serverIdentifier.InitializeAsync();
+                await directory.RefreshAsync();
             }
             catch (Exception ex)
             {
@@ -353,6 +356,20 @@ public sealed partial class VIPCore : BasePlugin
             }
         }
 
+        try
+        {
+            var featureOrder = GroupFeatureOrder.Read(groupsPath);
+            foreach (var (name, group) in _groupsConfig.Groups)
+            {
+                if (featureOrder.TryGetValue(name, out var keys))
+                    group.FeatureOrder = keys;
+            }
+        }
+        catch (Exception ex)
+        {
+            Core.Logger.LogWarning(ex, "[VIPCore] Could not read the feature order from {Path}; menus list features by key.", groupsPath);
+        }
+
         if (_config == null || _groupsConfig == null) return;
 
         // Dependency Injection
@@ -365,8 +382,14 @@ public sealed partial class VIPCore : BasePlugin
             .AddSingleton<CookieService>()
             .AddSingleton<FeatureService>()
             .AddSingleton<VipService>()
-            .AddSingleton<MenuService>()
-            .AddSingleton<ManageMenuService>()
+            .AddSingleton<VipDirectory>()
+            .AddSingleton<FeatureViewService>()
+            .AddSingleton<MenuKit>()
+            .AddSingleton<MenuPageRegistry>()
+            .AddSingleton<PerkPages>()
+            .AddSingleton<GrantPage>()
+            .AddSingleton<UserPages>()
+            .AddSingleton<VipMenus>()
             .AddSingleton<ServerIdentifier>();
 
         // Register VipConfig via IOptionsMonitor<T> for hot-reload support
@@ -392,11 +415,13 @@ public sealed partial class VIPCore : BasePlugin
         if (hotReload)
         {
             var serverIdentifier = _serviceProvider.GetRequiredService<ServerIdentifier>();
+            var directory = _serviceProvider.GetRequiredService<VipDirectory>();
             Task.Run(async () =>
             {
                 try
                 {
                     await serverIdentifier.InitializeAsync();
+                    await directory.RefreshAsync();
                 }
                 catch (Exception ex)
                 {

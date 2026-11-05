@@ -1,3 +1,4 @@
+using System.Globalization;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Plugins;
@@ -8,7 +9,7 @@ using VIPCore.Contract;
 
 namespace VIP_KillScreen;
 
-[PluginMetadata(Id = "VIP_KillScreen", Version = "1.0.0", Name = "[VIP] KillScreen", Author = "aga", Description = "Applies a health shot screen effect on kill for VIP players.")]
+[PluginMetadata(Id = "VIP_KillScreen", Version = "1.0.1", Name = "[VIP] KillScreen", Author = "aga", Description = "Applies a health shot screen effect on kill for VIP players.")]
 public partial class VIP_KillScreen : BasePlugin
 {
     private const string FeatureKey = "vip.killscreen";
@@ -64,8 +65,25 @@ public partial class VIP_KillScreen : BasePlugin
 
         _vipApi.RegisterFeature(FeatureKey, FeatureType.Toggle, null,
             displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.killscreen"]);
+        _vipApi.DescribeFeature(FeatureKey, Describe);
 
         _isFeatureRegistered = true;
+    }
+
+    private string? Describe(IPlayer player)
+    {
+        try
+        {
+            var config = _vipApi?.GetFeatureValue<KillScreenConfig>(player, FeatureKey);
+            if (config == null) return null;
+
+            var duration = config.Duration > 0 ? config.Duration : DefaultEffectDuration;
+            return Core.Translation.GetPlayerLocalizer(player)["vip.killscreen.description", duration.ToString("0.##", CultureInfo.InvariantCulture)];
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private HookResult OnPlayerDeath(EventPlayerDeath @event)

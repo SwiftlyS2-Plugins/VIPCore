@@ -1,4 +1,8 @@
 {
   "vip.vampirism": "Vampirism",
-  "vampirism.GainedOnKill": "Vampirism: [green]+{0} HP[/green] for killing [red]{1}[/red]"
+  "vampirism.GainedOnKill": "Vampirism: [green]+{0} HP[/green] for killing [red]{1}[/red]",
+  "vip.vampirism.description": "Heals {0}% of the damage you deal",
+  "vip.vampirism.description.hit_flat": "Heals {0} HP for every hit you land",
+  "vip.vampirism.description.kill_percent": "Heals {0}% of your max HP per kill",
+  "vip.vampirism.description.kill_flat": "Heals {0} HP per kill"
 }

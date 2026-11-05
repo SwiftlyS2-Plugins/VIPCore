@@ -15,7 +15,9 @@
 
 ## 📖 Description
 
-**VIP_GunMenu** is a VIPCore module that provides VIP players with an interactive, menu-based weapon selection system. Players can use the `!gunmenu` command to open a menu and choose from a customizable list of primary and secondary weapons. The plugin features usage limits, pistol round detection, sequential menu flow, and full per-VIP group configuration.
+**VIP_GunMenu** is a VIPCore module that gives VIP players a free loadout. Its **Gun menu** page sits in the VIP menu (`!vip`) and `!gunmenu` opens it directly: the player picks a primary and a pistol (or just one) and presses **Give loadout**. Each loadout given counts as one use; opening the page is free.
+
+The page shows the uses left, the loadout, whether giving replaces or adds to the guns held, and a countdown to when it stops taking uses after the round starts. It preselects the last loadout the player took on the current map. In the VIP menu the perk reads, for example, *3 picks a round, or !guns* (translation keys `vip.gun_menu.description*`, naming the first configured alias).
 
 ## 📦 Installation
 
@@ -29,7 +31,7 @@
 
 | Command | Aliases | Description | Permission |
 |---------|---------|-------------|------------|
-| `!gunmenu` | `!guns`, `!gm` | Opens the weapon selection menu | VIP with feature enabled |
+| `!gunmenu` | `!guns`, `!gm` | Opens the Gun menu page of the VIP menu | VIP with feature enabled |
 
 ## ⚙️ Configuration
 
@@ -49,9 +51,9 @@ Located in `addons/swiftlys2/configs/plugins/VIP_GunMenu/config.jsonc`:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `CommandAliases` | string[] | `["guns", "gm"]` | Additional command aliases for `!gunmenu` |
-| `DisableCommandAfterRoundStarts` | bool | `true` | Disable the command after round starts |
-| `CommandDisableDelayAfterRoundStarts` | int | `20` | Seconds after round start before disabling command |
+| `CommandAliases` | string[] | `["guns", "gm"]` | Additional command aliases for `!gunmenu`; the first one is named in the perk's description |
+| `DisableCommandAfterRoundStarts` | bool | `true` | Stop the command and **Give loadout** a while after the round starts |
+| `CommandDisableDelayAfterRoundStarts` | int | `20` | Seconds after round start before they stop; the page counts them down |
 
 ### VIP Group Configuration (`vip_groups.jsonc`)
 
@@ -186,12 +188,12 @@ Add the `vip.gun_menu` feature to your VIP groups configuration:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `GivePrimariesOnPistolRound` | bool | `false` | Allow primary weapons on pistol rounds (first round & second half first round) |
-| `GiveSecondariesAfterPrimaries` | bool | `true` | Automatically open secondary menu after primary weapon selection |
-| `ReplaceCurrentWeapons` | bool | `true` | Remove existing weapon before giving new one |
-| `MaxUsesPerPlayerPerRound` | int | `3` | Maximum times a player can use the menu per round |
-| `AvailablePrimaryGuns` | Gun[] | *(see Config.cs)* | List of primary weapons in the menu |
-| `AvailableSecondaryGuns` | Gun[] | *(see Config.cs)* | List of secondary weapons in the menu |
+| `GivePrimariesOnPistolRound` | bool | `false` | List primary weapons on pistol rounds (first round & second half first round) |
+| `GiveSecondariesAfterPrimaries` | bool | `true` | List pistols under the primaries. When `false`, pistols are only listed when no primaries are (e.g. on a pistol round) |
+| `ReplaceCurrentWeapons` | bool | `true` | Remove the weapon in the same slot before giving a new one; the page notes whether giving replaces or adds to the guns held |
+| `MaxUsesPerPlayerPerRound` | int | `3` | Loadouts a player can take per round |
+| `AvailablePrimaryGuns` | Gun[] | *(see Config.cs)* | Primary weapons on the page |
+| `AvailableSecondaryGuns` | Gun[] | *(see Config.cs)* | Pistols on the page |
 
 ### Gun Object Structure
 
@@ -257,11 +259,12 @@ Complete list of all weapons that can be configured in the gun menu:
 
 ## Features
 
-- **Interactive Menu System**: Players select weapons through an intuitive menu interface
-- **Primary & Secondary Weapons**: Separate menus for primary and secondary weapon selection
-- **Usage Limits**: Configurable maximum uses per player per round to prevent abuse
+- **One-Page Loadout**: The Gun menu page lists primaries and pistols together; pick one of each (pick again to clear) and give them in one go
+- **Part of the VIP Menu**: The page sits in the VIP menu next to VIPCore's own pages, and `!gunmenu` opens it directly
+- **Usage Limits**: Configurable number of loadouts per player per round; opening the page is free
+- **Round Window**: The page counts down to when the command and **Give loadout** stop taking uses
+- **Remembered Loadout**: The last loadout a player took on the current map is picked in advance
 - **Pistol Round Detection**: Automatically detects pistol rounds and can restrict primary weapons
-- **Sequential Menu Flow**: Option to automatically open secondary menu after primary selection
 - **Weapon Replacement**: Automatically removes current weapon before giving a new one
 - **Per-Group Configuration**: Each VIP group can have different weapon lists and settings
 - **Custom Display Names**: Weapons shown with friendly names (e.g., "Desert Eagle" instead of "weapon_deagle")

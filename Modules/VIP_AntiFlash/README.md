@@ -15,6 +15,8 @@
 
 VIP_AntiFlash is a VIPCore module that gives VIP players immunity to flashbang grenades. The immunity can be configured per VIP group with different modes: full immunity, teammates only, self-flash only, or a combination.
 
+In the VIP menu the perk reads *Flashbangs can't blind you* (translation key `vip.antiflash.description`). The module currently applies full immunity whatever mode the group sets.
+
 ## Installation
 
 1. Place `VIP_AntiFlash.dll` in `(swRoot)/plugins/VIP_AntiFlash/`

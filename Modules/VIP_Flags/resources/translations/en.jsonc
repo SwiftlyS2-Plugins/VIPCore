@@ -1,3 +1,5 @@
 {
-    "vip.flags": "Flags"
+    "vip.flags": "Flags",
+    "vip.flags.description": "Unlocks {0} server permissions",
+    "vip.flags.description.one": "Unlocks a server permission"
 }

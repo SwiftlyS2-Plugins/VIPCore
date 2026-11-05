@@ -1,3 +1,4 @@
 {
-  "vip.round_end_abilities": "Round End Abilities"
+  "vip.round_end_abilities": "Round End Abilities",
+  "vip.round_end_abilities.description": "{0}× speed and {1}× gravity after the round ends"
 }

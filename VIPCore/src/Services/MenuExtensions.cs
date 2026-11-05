@@ -26,6 +26,46 @@ internal static class MenuExtensions
         return menu;
     }
 
+    /// <summary>Moves the selection to a component by id; nothing happens when it is not on the page.</summary>
+    public static void FocusOn(this IMenuSession session, string? componentId)
+    {
+        if (componentId is null) return;
+
+        var index = 0;
+        foreach (var component in session.Menu.GetComponents(MenuRegion.Body))
+        {
+            if (!component.IsFocusable || !component.IsVisible(session)) continue;
+            if (component.Id == componentId)
+            {
+                session.SetFocus(index);
+                return;
+            }
+
+            index++;
+        }
+    }
+
+    // Opened fires for the first open and again whenever a child page returns here; only the first should move the selection.
+    public static IMenu FocusOnFirstOpen(this IMenu menu, string componentId)
+    {
+        Action<IMenuSession>? focus = null;
+        focus = session =>
+        {
+            menu.Opened -= focus;
+            session.FocusOn(componentId);
+        };
+        menu.Opened += focus;
+        return menu;
+    }
+
+    public static void InvalidateSessions(this IMenu menu)
+    {
+        foreach (var session in menu.Sessions)
+        {
+            session.Invalidate();
+        }
+    }
+
     // Not deferred on the game thread: unloading closes these menus while cancelling the plugin's scheduler, which drops a queued NextTick.
     private static void SetFrozen(ISwiftlyCore core, IPlayer player, bool frozen)
     {

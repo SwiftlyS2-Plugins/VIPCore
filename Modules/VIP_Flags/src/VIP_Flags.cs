@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -23,7 +24,7 @@ namespace VIP_Flags;
 [PluginMetadata
 (
     Id = "VIP_Flags", 
-    Version = "1.0", 
+    Version = "1.0.1", 
     Name = "VIP_Flags", 
     Author = "SLAYER", 
     Description = "Manages VIP flags for players"
@@ -79,8 +80,28 @@ public partial class VIP_Flags(ISwiftlyCore core) : BasePlugin(core)
         if (_vipApi == null || _isFeatureRegistered) return;
 
         _vipApi.RegisterFeature(FeatureKey, FeatureType.Toggle, null, displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.flags"]);
+        _vipApi.DescribeFeature(FeatureKey, Describe);
 
         _isFeatureRegistered = true;
+    }
+
+    private string? Describe(IPlayer player)
+    {
+        try
+        {
+            var config = _vipApi?.GetFeatureValue<FlagsConfig>(player, FeatureKey);
+            var count = config?.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries).Distinct().Count() ?? 0;
+            if (count == 0) return null;
+
+            var localizer = Core.Translation.GetPlayerLocalizer(player);
+            return count == 1
+                ? localizer["vip.flags.description.one"]
+                : localizer["vip.flags.description", count.ToString(CultureInfo.InvariantCulture)];
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private void CheckAllPlayers()

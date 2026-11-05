@@ -3,5 +3,9 @@
   "bhop.Enabled": "[blue]BunnyHop[default]: [green]Enabled[default]",
   "bhop.Disabled": "[blue]BunnyHop[default]: [red]Disabled[default]",
   "bhop.TimeToActivation": "BunnyHop will be active in [red]{0}[default]s.",
-  "bhop.Activated": "BunnyHop activated!"
+  "bhop.Activated": "BunnyHop activated!",
+  "vip.bhop.description": "From {0} s in, up to {1} u/s",
+  "vip.bhop.description.no_delay": "Right away, up to {0} u/s",
+  "vip.bhop.description.no_cap": "From {0} s in, no speed cap",
+  "vip.bhop.description.no_delay_no_cap": "Right away, no speed cap"
 }

@@ -9,7 +9,7 @@ namespace VIP_Endurance;
 
 [PluginMetadata(
     Id = "VIP_Endurance",
-    Version = "1.0.0",
+    Version = "1.0.1",
     Name = "[VIP] Endurance",
     Author = "R1KO / SwiftlyS2 port",
     Description = "Prevents weapon hits from slowing VIP players.")]
@@ -74,6 +74,9 @@ public class VIP_Endurance : BasePlugin
             null,
             displayNameResolver: player =>
                 Core.Translation.GetPlayerLocalizer(player)[FeatureKey]);
+        _vipApi.DescribeFeature(
+            FeatureKey,
+            player => Core.Translation.GetPlayerLocalizer(player)["vip.endurance.description"]);
 
         _isFeatureRegistered = true;
     }

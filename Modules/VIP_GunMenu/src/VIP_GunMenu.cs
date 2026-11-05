@@ -2,8 +2,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Commands;
-using SwiftlyS2.Shared.Menu;
-using SwiftlyS2.Shared.Menu.Components;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared.SchemaDefinitions;
@@ -12,7 +10,7 @@ using VIPCore.Contract;
 
 namespace VIP_GunMenu;
 
-[PluginMetadata(Id = "VIP_GunMenu", Version = "1.0.0", Name = "VIP_GunMenu", Author = "shmitz", Description = "Allows players to equip a weapon for free")]
+[PluginMetadata(Id = "VIP_GunMenu", Version = "1.1.0", Name = "VIP_GunMenu", Author = "shmitz", Description = "Allows players to equip a weapon for free")]
 public partial class VIP_GunMenu : BasePlugin
 {
     private const string FeatureKey = "vip.gun_menu";
@@ -57,6 +55,8 @@ public partial class VIP_GunMenu : BasePlugin
     {
         Core.Event.OnMapLoad += _ =>
         {
+            _lastLoadouts.Clear();
+            _pages.Clear();
             Core.Scheduler.DelayBySeconds(1.0f, () => RefreshGameRulesAndMaxRounds());
         };
 
@@ -120,6 +120,13 @@ public partial class VIP_GunMenu : BasePlugin
             null,
             displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.gun_menu"]
         );
+        _vipApi.DescribeFeature(FeatureKey, Describe);
+        _vipApi.RegisterMenuPage(new VipMenuPage(
+            PageId,
+            10,
+            p => Core.Translation.GetPlayerLocalizer(p)["vip.gun_menu.title"],
+            IsAvailable: p => _vipApi is { } api && api.IsClientVip(p) && api.GetPlayerFeatureState(p, FeatureKey) != FeatureState.NoAccess,
+            Build: p => BuildPage(p)));
 
         _isFeatureRegistered = true;
     }
@@ -153,79 +160,7 @@ public partial class VIP_GunMenu : BasePlugin
             return;
         }
 
-        _gunMenuUsed.AddOrUpdate(player.SteamID, 1, (_, current) => current + 1);
-
-        OpenGunMenuForPlayer(player, config);
-    }
-
-    private void OpenGunMenuForPlayer(IPlayer player, GroupConfig config)
-    {
-        var givePrimaries = !IsPistolRound() || config.GivePrimariesOnPistolRound;
-        var primaryGuns = givePrimaries ? config.AvailablePrimaryGuns.DistinctBy(g => g.WeaponName).ToList() : new List<Gun>();
-        var secondaryGuns = config.AvailableSecondaryGuns.DistinctBy(g => g.WeaponName).ToList();
-
-        if (givePrimaries)
-        {
-            OpenPrimaryGunsMenuForPlayer(player, primaryGuns, config);
-        }
-        else
-        {
-            OpenSecondaryGunsMenuForPlayer(player, secondaryGuns, config);
-        }
-    }
-
-    private void OpenPrimaryGunsMenuForPlayer(IPlayer player, List<Gun> primaryGuns, GroupConfig config)
-    {
-        var builder = Core.Menu.CreateMenu("vipcore.gun-menu.primary")
-            .AddHeader(new TitleComponent(Core.Localizer["vip.gun_menu.primary_menu_title"]) { Overflow = MenuTextOverflow.None });
-
-        foreach (var gun in primaryGuns)
-        {
-            var option = new ButtonComponent(gun.DisplayName, async ctx =>
-            {
-                GivePlayerWeapon(ctx.Player, gun, config.ReplaceCurrentWeapons);
-
-                if (config.GiveSecondariesAfterPrimaries && config.AvailableSecondaryGuns.Count > 0)
-                {
-                    OpenSecondaryGunsMenuForPlayer(ctx.Player, config.AvailableSecondaryGuns, config);
-                }
-
-                await ValueTask.CompletedTask;
-            });
-            builder.Add(option);
-        }
-
-        OpenMenu(player, builder);
-    }
-
-    private void OpenSecondaryGunsMenuForPlayer(IPlayer player, List<Gun> secondaryGuns, GroupConfig config)
-    {
-        var builder = Core.Menu.CreateMenu("vipcore.gun-menu.secondary")
-            .AddHeader(new TitleComponent(Core.Localizer["vip.gun_menu.secondary_menu_title"]) { Overflow = MenuTextOverflow.None });
-
-        foreach (var gun in secondaryGuns)
-        {
-            var option = new ButtonComponent(gun.DisplayName, async ctx =>
-            {
-                GivePlayerWeapon(ctx.Player, gun, config.ReplaceCurrentWeapons);
-                await ValueTask.CompletedTask;
-            }) { CloseOnSelect = true };
-            builder.Add(option);
-        }
-
-        OpenMenu(player, builder);
-    }
-
-    private static void OpenMenu(IPlayer player, IMenuBuilder builder)
-    {
-        var menu = builder.Build();
-        // The classic builder filled an empty menu with SwiftlyS2's own "No options" row; Core.Menu draws only the title.
-        if (menu.GetComponents(MenuRegion.Body).Count == 0)
-        {
-            menu.Add(MenuRegion.Body, new NoOptionsComponent());
-        }
-
-        menu.Open(player);
+        _vipApi.OpenMenu(player, PageId);
     }
 
     private bool IsPistolRound()
@@ -308,13 +243,10 @@ public partial class VIP_GunMenu : BasePlugin
         {
             _vipApi.OnCoreReady -= RegisterVipFeatures;
             if (_isFeatureRegistered)
+            {
+                _vipApi.UnregisterMenuPage(PageId);
                 _vipApi.UnregisterFeature(FeatureKey);
+            }
         }
-    }
-
-    private sealed class NoOptionsComponent : TextComponent
-    {
-        public override MenuNode Render(IMenuComponentRenderContext context)
-            => new MenuTextNode(context.Translate("menu.default_option"), Style);
     }
 }

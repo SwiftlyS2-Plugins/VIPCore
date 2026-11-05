@@ -43,12 +43,14 @@ public sealed partial class VIPCore
         }
 
         var vipService = _serviceProvider.GetRequiredService<VipService>();
+        var directory = _serviceProvider.GetRequiredService<VipDirectory>();
 
         Task.Run(async () =>
         {
             try
             {
                 await vipService.AddVip(steamId, "unknown", group, time, global);
+                await directory.RefreshAsync(changed: true);
 
                 Core.Scheduler.NextTick(() =>
                 {

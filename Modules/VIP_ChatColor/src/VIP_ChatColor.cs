@@ -31,7 +31,7 @@ public class ChatColorConfig
     public string T      { get; set; } = "";
 }
 
-[PluginMetadata(Id = "VIP_ChatColor", Version = "1.0.0", Name = "VIP_ChatColor", Author = "aga", Description = "Colored chat names for VIP players.")]
+[PluginMetadata(Id = "VIP_ChatColor", Version = "1.0.1", Name = "VIP_ChatColor", Author = "aga", Description = "Colored chat names for VIP players.")]
 public partial class VIP_ChatColor : BasePlugin
 {
     private const string FeatureKey = "vip.chatcolor";
@@ -98,8 +98,24 @@ public partial class VIP_ChatColor : BasePlugin
 
         _vipApi.RegisterFeature(FeatureKey, FeatureType.Toggle, null,
             displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.chatcolor"]);
+        _vipApi.DescribeFeature(FeatureKey, Describe);
 
         _isFeatureRegistered = true;
+    }
+
+    private string? Describe(IPlayer player)
+    {
+        try
+        {
+            var config = _vipApi?.GetFeatureValue<ChatColorConfig>(player, FeatureKey);
+            var colored = config != null
+                && (!string.IsNullOrEmpty(config.Global) || !string.IsNullOrEmpty(config.CT) || !string.IsNullOrEmpty(config.T));
+            return colored ? Core.Translation.GetPlayerLocalizer(player)["vip.chatcolor.description"] : null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private HookResult OnClientChat(int playerId, string text, bool teamonly)

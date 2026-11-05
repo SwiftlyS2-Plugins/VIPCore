@@ -45,8 +45,8 @@ It provides database-backed VIP groups, a shared API for feature modules, and a 
 
 | Command | Permission | Description |
 | :--- | :--- | :--- |
-| `vip` | Player | Opens the VIP menu for the current player. |
-| `vip_manage` | `vipcore.manage` | Opens the VIP management menu (in-game). |
+| `vip` | Player | Opens the VIP menu on Perks; for an admin who is not VIP, on VIP users. |
+| `vip_manage` | `vipcore.manage` | Opens the VIP menu on VIP users, beside Grant VIP. |
 | `vip_adduser <steamid> <group> <time>` | `vipcore.adduser` | Adds a local VIP group for a duration based on `TimeMode`. Use `0` for permanent. |
 | `vip_addglobal <steamid> <group> <time>` | `vipcore.addglobal` | Adds a VIP group shared by all servers using the same database. |
 | `vip_deleteuser <steamid>` | `vipcore.deleteuser` | Removes local VIP groups only. |
@@ -319,6 +319,9 @@ public class VIP_YourFeature : BasePlugin
         },
         displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.yourfeature"]);
 
+        // The line the VIP menu shows under the feature's name; null when the group has no setting
+        _vipApi.DescribeFeature(FeatureKey, p => Core.Translation.GetPlayerLocalizer(p)["vip.yourfeature.description"]);
+
         _isFeatureRegistered = true;
 
         // Subscribe to VIPCore events
@@ -367,6 +370,7 @@ Create `resources/translations/en.jsonc`:
 ```jsonc
 {
   "vip.yourfeature": "Your Feature",
+  "vip.yourfeature.description": "What your feature does, in a few words",
   "yourfeature.activated": "Your feature has been activated!",
   "yourfeature.deactivated": "Your feature has been deactivated."
 }
@@ -491,8 +495,25 @@ VIPCore loads its database and config asynchronously. Always check `IsCoreReady(
 | Type | Description |
 |------|-------------|
 | `FeatureType.Toggle` | On/off toggle (most common) |
-| `FeatureType.Selectable` | Cycles through options when selected in menu |
+| `FeatureType.Selectable` | A choice: with `RegisterFeatureOptions` its options are listed on the Customize page; without, selecting it calls `onSelectItem` |
 | `FeatureType.Hide` | Active feature with no menu entry |
+
+#### Choices and pages of your own (VIPCore 1.2.0)
+A Selectable feature lists its choices on VIPCore's Customize page rather than opening a menu of its own:
+```csharp
+_vipApi.RegisterFeatureOptions(FeatureKey,
+    options: p => [new VipFeatureOption("90", "90", IsDefault: true), new VipFeatureOption("110", "110")],
+    current: p => CurrentId(p),        // the id in use
+    choose: (p, id) => Apply(p, id));  // called when the player picks one
+```
+A feature that needs a page of its own (the gun menu) registers one, and VIPCore lists it in the VIP menu:
+```csharp
+_vipApi.RegisterMenuPage(new VipMenuPage("vipcore.yourpage", 10,
+    Label: p => "Your page",
+    IsAvailable: p => _vipApi.PlayerHasFeature(p, FeatureKey),
+    Build: p => BuildPage(p)));
+```
+`OpenMenu(player, "vipcore.yourpage")` opens it under the VIP menu, so Back returns there. Give the page's rows `Tag`s from the contract (`VipSectionRow`, `VipOptionRow`, `VipActionRow`) and a renderer that understands them, such as CustomHUD, draws them like VIPCore's own pages; every other renderer shows the rows' text.
 
 #### Main Thread Safety
 Game API calls must run on the main thread. Always wrap them in `NextTick`:
@@ -541,6 +562,16 @@ void EnableAllFeatures();
 
 // Core State
 bool IsCoreReady();
+
+// Menus and read-only views (VIPCore 1.2.0)
+void DescribeFeature(string featureKey, Func<IPlayer, string?> description);
+void RegisterFeatureOptions(string featureKey, Func<IPlayer, IReadOnlyList<VipFeatureOption>> options, Func<IPlayer, string?> current, Action<IPlayer, string> choose);
+void RegisterMenuPage(VipMenuPage page);
+void UnregisterMenuPage(string pageId);
+bool OpenMenu(IPlayer player, string? pageId = null);
+VipFeatureView? GetFeatureView(IPlayer player, string featureKey);
+IReadOnlyList<VipGrant> GetClientVipGrants(IPlayer player);
+IReadOnlyList<VipGroupInfo> GetGroupInfos();
 
 // Events
 event Action? OnCoreReady;

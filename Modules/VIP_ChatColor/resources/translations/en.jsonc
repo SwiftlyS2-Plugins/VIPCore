@@ -1,3 +1,4 @@
 {
-  "vip.chatcolor": "Chat Color"
+  "vip.chatcolor": "Chat Color",
+  "vip.chatcolor.description": "Your name in color in chat"
 }
