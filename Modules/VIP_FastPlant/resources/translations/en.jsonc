@@ -1,3 +1,5 @@
 {
-  "hello": "world"
+  "hello": "world",
+  "vip.fastplant.description": "Plants {0}× faster",
+  "vip.fastplant.description.seconds": "Plants in {0} s"
 }

@@ -3,7 +3,9 @@ using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using VIPCore.Contract;
 using VIPCore.Services;
+using VIPCore.Services.Menus;
 
 namespace VIPCore;
 
@@ -29,20 +31,25 @@ public sealed partial class VIPCore
         if (player == null) return;
 
         var vipService = serviceProvider.GetRequiredService<VipService>();
+        var menus = serviceProvider.GetRequiredService<VipMenus>();
 
         Core.Scheduler.NextTick(() =>
         {
-            var localizer = Core.Translation.GetPlayerLocalizer(player);
-            var vipUser = vipService.GetVipUser(player.SteamID);
+            if (!player.IsValid) return;
 
-            if (vipUser == null)
+            if (vipService.IsClientVip(player))
             {
-                player.SendMessage(MessageType.Chat, localizer["vip.NoAccess"]);
-                return;
+                menus.OpenMenu(player, VipMenuIds.Perks);
             }
-
-            var menuService = serviceProvider.GetRequiredService<MenuService>();
-            menuService.OpenVipMenu(player, vipUser);
+            else if (menus.CanManage(player))
+            {
+                menus.OpenMenu(player, VipMenuIds.Users);
+            }
+            else
+            {
+                var localizer = Core.Translation.GetPlayerLocalizer(player);
+                player.SendMessage(MessageType.Chat, localizer["vip.NoAccess"]);
+            }
         });
     }
 }

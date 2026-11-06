@@ -1,3 +1,4 @@
 {
-  "vip.money": "Money"
+  "vip.money": "Money",
+  "vip.money.description": "+${0} every round"
 }

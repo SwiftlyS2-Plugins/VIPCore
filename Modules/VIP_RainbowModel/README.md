@@ -64,6 +64,7 @@ Add the feature to your server's `vip_groups.jsonc` under the group's `Values`.
 
 - If a player disables the feature in the VIP menu, the module resets their render color back to white.
 - The loop is stopped on death and on disconnect.
+- In the VIP menu the perk reads, for example, *Your model changes color every 1.4 s* (translation key `vip.rainbowmodel.description`); it has no line when `Enabled` is false.
 
 ## Building
 

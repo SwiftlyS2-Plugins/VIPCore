@@ -1,3 +1,8 @@
 {
-  "hello": "world"
+  "hello": "world",
+  "vip.tag": "Chat tag",
+  "vip.tag.description": "Before your name in chat",
+  "tag.None": "No tag",
+  "tag.On": "Chat tag set to {0}",
+  "tag.Off": "Chat tag removed"
 }

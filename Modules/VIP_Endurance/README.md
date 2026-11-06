@@ -40,3 +40,6 @@ The package includes English, Russian, Ukrainian, and Finnish translations.
 Translation files are located in:
 
 `VIP_Endurance/resources/translations/`
+
+`vip.endurance.description` is the line the VIP menu shows under the perk
+(*Hits don't slow you down*).

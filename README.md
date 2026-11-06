@@ -45,8 +45,8 @@ It provides database-backed VIP groups, a shared API for feature modules, and a 
 
 | Command | Permission | Description |
 | :--- | :--- | :--- |
-| `vip` | Player | Opens the VIP menu for the current player. |
-| `vip_manage` | `vipcore.manage` | Opens the VIP management menu (in-game). |
+| `vip` | Player | Opens the VIP menu on Perks; for an admin who is not VIP, on VIP users. |
+| `vip_manage` | `vipcore.manage` | Opens the VIP menu on VIP users, beside Grant VIP. |
 | `vip_adduser <steamid> <group> <time>` | `vipcore.adduser` | Adds a local VIP group for a duration based on `TimeMode`. Use `0` for permanent. |
 | `vip_addglobal <steamid> <group> <time>` | `vipcore.addglobal` | Adds a VIP group shared by all servers using the same database. |
 | `vip_deleteuser <steamid>` | `vipcore.deleteuser` | Removes local VIP groups only. |
@@ -200,12 +200,12 @@ This repository ships several optional VIP modules (each one is a standalone Swi
 ## Creating VIP Module Plugins
 
 VIP modules are standalone SwiftlyS2 plugins that extend VIPCore with custom features (e.g., anti-flash, bhop, FOV, armor, etc.).  
-The API contract is distributed as a NuGet package: **`SwiftlyS2.VIPCore.Contract`** (use `Version="*"` for latest).
+The API contract is `VIPCore.Contract.dll`, which ships with VIPCore in `resources/exports/`. Modules compile against it and never ship their own copy.
 
 ### Prerequisites
 
 - [SwiftlyS2.CS2](https://www.nuget.org/packages/SwiftlyS2.CS2) NuGet package
-- [SwiftlyS2.VIPCore.Contract](https://www.nuget.org/packages/SwiftlyS2.VIPCore.Contract) NuGet package
+- `VIPCore.Contract.dll` — from a VIPCore release zip or server install (`VIPCore/resources/exports/`)
 
 > **Required dependency:** The [Cookies](https://github.com/SwiftlyS2-Plugins/Cookies) plugin must be installed on the server. VIPCore uses it to persist player feature preferences (enable/disable states) across sessions.
 
@@ -213,6 +213,8 @@ The API contract is distributed as a NuGet package: **`SwiftlyS2.VIPCore.Contrac
 
 ```
 VIP_YourFeature/
+├── lib/
+│   └── VIPCore.Contract.dll       (compile-time reference only)
 ├── src/
 │   └── VIP_YourFeature.cs
 ├── resources/
@@ -227,15 +229,20 @@ VIP_YourFeature/
 
 ### Step 1 — Create the Project File
 
-Create `VIP_YourFeature.csproj` and add the `SwiftlyS2.VIPCore.Contract` NuGet package:
+Create `VIP_YourFeature.csproj` and reference `VIPCore.Contract.dll` from your `lib/` folder:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="SwiftlyS2.VIPCore.Contract" Version="*" ExcludeAssets="runtime" PrivateAssets="all" />
+  <Reference Include="VIPCore.Contract">
+    <HintPath>lib\VIPCore.Contract.dll</HintPath>
+    <Private>false</Private>
+  </Reference>
 </ItemGroup>
 ```
 
-> **Note:** Use `ExcludeAssets="runtime" PrivateAssets="all"` because VIPCore is already loaded on the server at runtime — you only need the contract at compile time.
+> **Note:** `Private=false` keeps the contract out of your build output — VIPCore is already loaded on the server and exports the one copy every module binds to, so you only need it at compile time. Modules inside this repository use `<ProjectReference Include="..\..\VIPCore.Contract\VIPCore.Contract.csproj" Private="false" />` instead.
+
+> The `SwiftlyS2.VIPCore.Contract` NuGet package is no longer published; versions already on NuGet.org are frozen and may lag behind the contract VIPCore ships.
 
 ---
 
@@ -312,6 +319,9 @@ public class VIP_YourFeature : BasePlugin
         },
         displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.yourfeature"]);
 
+        // The line the VIP menu shows under the feature's name; null when the group has no setting
+        _vipApi.DescribeFeature(FeatureKey, p => Core.Translation.GetPlayerLocalizer(p)["vip.yourfeature.description"]);
+
         _isFeatureRegistered = true;
 
         // Subscribe to VIPCore events
@@ -360,6 +370,7 @@ Create `resources/translations/en.jsonc`:
 ```jsonc
 {
   "vip.yourfeature": "Your Feature",
+  "vip.yourfeature.description": "What your feature does, in a few words",
   "yourfeature.activated": "Your feature has been activated!",
   "yourfeature.deactivated": "Your feature has been deactivated."
 }
@@ -484,8 +495,25 @@ VIPCore loads its database and config asynchronously. Always check `IsCoreReady(
 | Type | Description |
 |------|-------------|
 | `FeatureType.Toggle` | On/off toggle (most common) |
-| `FeatureType.Selectable` | Cycles through options when selected in menu |
+| `FeatureType.Selectable` | A choice: with `RegisterFeatureOptions` its options are listed on the Customize page; without, selecting it calls `onSelectItem` |
 | `FeatureType.Hide` | Active feature with no menu entry |
+
+#### Choices and pages of your own (VIPCore 1.2.0)
+A Selectable feature lists its choices on VIPCore's Customize page rather than opening a menu of its own:
+```csharp
+_vipApi.RegisterFeatureOptions(FeatureKey,
+    options: p => [new VipFeatureOption("90", "90", IsDefault: true), new VipFeatureOption("110", "110")],
+    current: p => CurrentId(p),        // the id in use
+    choose: (p, id) => Apply(p, id));  // called when the player picks one
+```
+A feature that needs a page of its own (the gun menu) registers one, and VIPCore lists it in the VIP menu:
+```csharp
+_vipApi.RegisterMenuPage(new VipMenuPage("vipcore.yourpage", 10,
+    Label: p => "Your page",
+    IsAvailable: p => _vipApi.PlayerHasFeature(p, FeatureKey),
+    Build: p => BuildPage(p)));
+```
+`OpenMenu(player, "vipcore.yourpage")` opens it under the VIP menu, so Back returns there. Give the page's rows `Tag`s from the contract (`VipSectionRow`, `VipOptionRow`, `VipActionRow`) and a renderer that understands them, such as CustomHUD, draws them like VIPCore's own pages; every other renderer shows the rows' text.
 
 #### Main Thread Safety
 Game API calls must run on the main thread. Always wrap them in `NextTick`:
@@ -534,6 +562,16 @@ void EnableAllFeatures();
 
 // Core State
 bool IsCoreReady();
+
+// Menus and read-only views (VIPCore 1.2.0)
+void DescribeFeature(string featureKey, Func<IPlayer, string?> description);
+void RegisterFeatureOptions(string featureKey, Func<IPlayer, IReadOnlyList<VipFeatureOption>> options, Func<IPlayer, string?> current, Action<IPlayer, string> choose);
+void RegisterMenuPage(VipMenuPage page);
+void UnregisterMenuPage(string pageId);
+bool OpenMenu(IPlayer player, string? pageId = null);
+VipFeatureView? GetFeatureView(IPlayer player, string featureKey);
+IReadOnlyList<VipGrant> GetClientVipGrants(IPlayer player);
+IReadOnlyList<VipGroupInfo> GetGroupInfos();
 
 // Events
 event Action? OnCoreReady;

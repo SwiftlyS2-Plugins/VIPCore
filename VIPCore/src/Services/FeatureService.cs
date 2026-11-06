@@ -17,6 +17,11 @@ public class FeatureService(ISwiftlyCore core, IOptionsMonitor<VipConfig> config
     private readonly ConcurrentDictionary<string, Feature> _features = new();
     private readonly HashSet<string> _forcedDisabledFeatures = new();
 
+    // A module may describe a feature or list its options before registering it.
+    private readonly object _registrationLock = new();
+    private readonly Dictionary<string, Func<IPlayer, string?>> _pendingDescriptions = new();
+    private readonly Dictionary<string, FeatureOptions> _pendingOptions = new();
+
     public void RegisterFeature(string key, FeatureType type, Action<IPlayer, FeatureState>? onSelect = null, Func<IPlayer, string>? displayNameResolver = null)
     {
         var feature = new Feature
@@ -26,14 +31,51 @@ public class FeatureService(ISwiftlyCore core, IOptionsMonitor<VipConfig> config
             OnSelectItem = onSelect,
             DisplayNameResolver = displayNameResolver
         };
-        _features[key] = feature;
+
+        lock (_registrationLock)
+        {
+            if (_pendingDescriptions.Remove(key, out var description))
+                feature.DescriptionResolver = description;
+            if (_pendingOptions.Remove(key, out var options))
+                feature.Options = options;
+
+            _features[key] = feature;
+        }
+
         if (config.VipLogging)
             core.Logger.LogDebug("[VIPCore] Registered feature: {Key} ({Type})", key, type);
     }
 
     public void UnregisterFeature(string key)
     {
-        _features.TryRemove(key, out _);
+        lock (_registrationLock)
+        {
+            _features.TryRemove(key, out _);
+            _pendingDescriptions.Remove(key);
+            _pendingOptions.Remove(key);
+        }
+    }
+
+    public void DescribeFeature(string key, Func<IPlayer, string?> description)
+    {
+        lock (_registrationLock)
+        {
+            if (_features.TryGetValue(key, out var feature))
+                feature.DescriptionResolver = description;
+            else
+                _pendingDescriptions[key] = description;
+        }
+    }
+
+    public void SetFeatureOptions(string key, FeatureOptions options)
+    {
+        lock (_registrationLock)
+        {
+            if (_features.TryGetValue(key, out var feature))
+                feature.Options = options;
+            else
+                _pendingOptions[key] = options;
+        }
     }
 
     public IEnumerable<Feature> GetRegisteredFeatures() => _features.Values;

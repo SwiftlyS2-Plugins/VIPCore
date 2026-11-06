@@ -1,3 +1,4 @@
+using System.Globalization;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.GameEventDefinitions;
@@ -8,7 +9,7 @@ using VIPCore.Contract;
 
 namespace VIP_Health;
 
-[PluginMetadata(Id = "VIP_Health", Version = "1.0.0", Name = "VIP_Health", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_Health", Version = "1.0.1", Name = "VIP_Health", Author = "aga", Description = "No description.")]
 public partial class VIP_Health : BasePlugin {
   private const string FeatureKey = "vip.health";
   private const float ApplyRetryDelaySeconds = 0.05f;
@@ -78,9 +79,25 @@ public partial class VIP_Health : BasePlugin {
       null,
       displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.health"]
     );
+    _vipApi.DescribeFeature(FeatureKey, Describe);
 
     _isFeatureRegistered = true;
     _vipApi.OnPlayerSpawn += OnVipPlayerSpawn;
+  }
+
+  private string? Describe(IPlayer player)
+  {
+    try
+    {
+      var health = _vipApi?.GetFeatureValue<HealthConfig>(player, FeatureKey)?.Health ?? 0;
+      return health > 0
+        ? Core.Translation.GetPlayerLocalizer(player)["vip.health.description", health.ToString(CultureInfo.InvariantCulture)]
+        : null;
+    }
+    catch
+    {
+      return null;
+    }
   }
 
   private void OnVipPlayerSpawn(IPlayer player)

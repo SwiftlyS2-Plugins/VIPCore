@@ -10,7 +10,7 @@ using SwiftlyS2.Shared.SchemaDefinitions;
 
 namespace VIP_Items;
 
-[PluginMetadata(Id = "VIP_Items", Version = "1.0.0", Name = "VIP_Items", Author = "shmitz", Description = "Gives items when player spawns")]
+[PluginMetadata(Id = "VIP_Items", Version = "1.0.1", Name = "VIP_Items", Author = "shmitz", Description = "Gives items when player spawns")]
 public partial class VIP_Items : BasePlugin
 {
     private const string FeatureKey = "vip.items";
@@ -90,8 +90,25 @@ public partial class VIP_Items : BasePlugin
             null,
             displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.items"]
         );
+        _vipApi.DescribeFeature(FeatureKey, Describe);
 
         _isFeatureRegistered = true;
+    }
+
+    private string? Describe(IPlayer player)
+    {
+        try
+        {
+            var config = _vipApi?.GetFeatureValue<ItemsConfig>(player, FeatureKey);
+            if (config == null || !config.CT.Concat(config.T).Any(item => !string.IsNullOrWhiteSpace(item))) return null;
+
+            return Core.Translation.GetPlayerLocalizer(player)[
+                config.GiveOnPistolRounds ? "vip.items.description" : "vip.items.description.no_pistol"];
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     [GameEventHandler(HookMode.Post)]

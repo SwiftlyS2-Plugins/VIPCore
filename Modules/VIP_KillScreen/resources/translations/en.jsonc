@@ -1,3 +1,4 @@
 {
-  "vip.killscreen": "Kill Screen"
+  "vip.killscreen": "Kill Screen",
+  "vip.killscreen.description": "Healthshot screen effect for {0} s after a kill"
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Serialization;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
@@ -12,7 +13,7 @@ using SwiftlyS2.Shared.SchemaDefinitions;
 
 namespace VIP_Bhop;
 
-[PluginMetadata(Id = "VIP_Bhop", Version = "1.0.0", Name = "[VIP] Bhop", Author = "aga")]
+[PluginMetadata(Id = "VIP_Bhop", Version = "1.0.1", Name = "[VIP] Bhop", Author = "aga")]
 public class VIP_Bhop : BasePlugin
 {
     private const string FeatureKey = "vip.bhop";
@@ -223,6 +224,7 @@ public class VIP_Bhop : BasePlugin
             });
         },
         displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.bhop"]);
+        _vipApi.DescribeFeature(FeatureKey, Describe);
 
         _isFeatureRegistered = true;
 
@@ -240,6 +242,31 @@ public class VIP_Bhop : BasePlugin
             _bhopSettings[player.PlayerID].MaxSpeed = config?.MaxSpeed ?? 300.0f;
             _bhopSettings[player.PlayerID].JumpForce = config?.JumpForce ?? 305.0f;
         };
+    }
+
+    // A non-positive Timer starts bhop at spawn and a non-positive MaxSpeed leaves it uncapped.
+    private string? Describe(IPlayer player)
+    {
+        try
+        {
+            var config = _vipApi?.GetFeatureValue<BhopConfig>(player, FeatureKey);
+            if (config == null) return null;
+
+            var localizer = Core.Translation.GetPlayerLocalizer(player);
+            var timer = config.Timer.ToString("0.##", CultureInfo.InvariantCulture);
+            var maxSpeed = config.MaxSpeed.ToString("0.##", CultureInfo.InvariantCulture);
+            return (config.Timer > 0, config.MaxSpeed > 0) switch
+            {
+                (true, true) => localizer["vip.bhop.description", timer, maxSpeed],
+                (false, true) => localizer["vip.bhop.description.no_delay", maxSpeed],
+                (true, false) => localizer["vip.bhop.description.no_cap", timer],
+                _ => localizer["vip.bhop.description.no_delay_no_cap"],
+            };
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public override void Unload()

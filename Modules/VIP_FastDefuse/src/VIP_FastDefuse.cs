@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.Plugins;
@@ -12,7 +13,7 @@ using VIPCore.Contract;
 
 namespace VIP_FastDefuse;
 
-[PluginMetadata(Id = "VIP_FastDefuse", Version = "1.0.0", Name = "VIP_FastDefuse", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_FastDefuse", Version = "1.0.1", Name = "VIP_FastDefuse", Author = "aga", Description = "No description.")]
 public partial class VIP_FastDefuse : BasePlugin {
   private const string FeatureKey = "vip.fastdefuse";
   private const float DefaultDefuseTimeNoKitSeconds = 10.0f;
@@ -85,8 +86,32 @@ public partial class VIP_FastDefuse : BasePlugin {
       null,
       displayNameResolver: p => "Fast Defuse"
     );
+    _vipApi.DescribeFeature(FeatureKey, Describe);
 
     _isFeatureRegistered = true;
+  }
+
+  // Mirrors OnBombBeginDefuse: Seconds overrides the time, a Multiplier above 1 is a speed-up factor.
+  private string? Describe(IPlayer player)
+  {
+    try
+    {
+      var config = _vipApi?.GetFeatureValue<FastDefuseConfig>(player, FeatureKey);
+      if (config == null) return null;
+
+      var localizer = Core.Translation.GetPlayerLocalizer(player);
+      if (config.Seconds > 0)
+        return localizer["vip.fastdefuse.description.seconds", config.Seconds.ToString("0.##", CultureInfo.InvariantCulture)];
+
+      var multiplier = config.Multiplier <= 0 ? 0.5f : config.Multiplier <= 1.0f ? config.Multiplier : 1.0f / config.Multiplier;
+      return multiplier < 1.0f
+        ? localizer["vip.fastdefuse.description", (1.0f / multiplier).ToString("0.##", CultureInfo.InvariantCulture)]
+        : null;
+    }
+    catch
+    {
+      return null;
+    }
   }
 
   private HookResult OnBombBeginDefuse(EventBombBegindefuse @event)

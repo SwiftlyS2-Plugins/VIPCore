@@ -15,6 +15,8 @@
 
 VIP_FastPlant is a VIPCore module that reduces the bomb planting time for VIP players.
 
+In the VIP menu the perk reads, for example, *Plants 2× faster*, or *Plants in 1 s* when the group sets `Duration` (translation keys `vip.fastplant.description*`).
+
 ## Installation
 
 1. Place `VIP_FastPlant.dll` in `(swRoot)/plugins/VIP_FastPlant/`

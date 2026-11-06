@@ -9,7 +9,7 @@ using VIPCore.Contract;
 
 namespace VIP_Zeus;
 
-[PluginMetadata(Id = "VIP_Zeus", Version = "1.0.0", Name = "VIP_Zeus", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_Zeus", Version = "1.0.1", Name = "VIP_Zeus", Author = "aga", Description = "No description.")]
 public partial class VIP_Zeus : BasePlugin {
   private const string FeatureKey = "vip.zeus";
   private const string TaserDesignerName = "weapon_taser";
@@ -73,6 +73,7 @@ public partial class VIP_Zeus : BasePlugin {
       null,
       displayNameResolver: p => "Zeus"
     );
+    _vipApi.DescribeFeature(FeatureKey, p => Core.Translation.GetPlayerLocalizer(p)["vip.zeus.description"]);
 
     _isFeatureRegistered = true;
     _vipApi.PlayerLoaded += OnPlayerLoaded;

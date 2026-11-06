@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.GameEventDefinitions;
@@ -10,7 +11,7 @@ using VIPCore.Contract;
 
 namespace VIP_FastPlant;
 
-[PluginMetadata(Id = "VIP_FastPlant", Version = "1.0.0", Name = "VIP_FastPlant", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_FastPlant", Version = "1.0.1", Name = "VIP_FastPlant", Author = "aga", Description = "No description.")]
 public partial class VIP_FastPlant : BasePlugin {
   private const string FeatureKey = "vip.fastplant";
 
@@ -78,8 +79,32 @@ public partial class VIP_FastPlant : BasePlugin {
       null,
       displayNameResolver: p => "Fast Plant"
     );
+    _vipApi.DescribeFeature(FeatureKey, Describe);
 
     _isFeatureRegistered = true;
+  }
+
+  // Mirrors OnBombBeginPlant: Duration overrides the time, otherwise only a Multiplier in (0, 1] is used.
+  private string? Describe(IPlayer player)
+  {
+    try
+    {
+      var config = _vipApi?.GetFeatureValue<FastPlantConfig>(player, FeatureKey);
+      if (config == null) return null;
+
+      var localizer = Core.Translation.GetPlayerLocalizer(player);
+      if (config.Duration > 0)
+        return localizer["vip.fastplant.description.seconds", config.Duration.ToString(CultureInfo.InvariantCulture)];
+
+      var multiplier = config.Multiplier > 0 && config.Multiplier <= 1.0f ? config.Multiplier : 0.5f;
+      return multiplier < 1.0f
+        ? localizer["vip.fastplant.description", (1.0f / multiplier).ToString("0.##", CultureInfo.InvariantCulture)]
+        : null;
+    }
+    catch
+    {
+      return null;
+    }
   }
 
   private HookResult OnBombBeginPlant(EventBombBeginplant @event)

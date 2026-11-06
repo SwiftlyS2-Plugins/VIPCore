@@ -1,7 +1,17 @@
 {
   "vip.gun_menu": "Gun Menu",
-  "vip.gun_menu.primary_menu_title": "Choose main gun",
-  "vip.gun_menu.secondary_menu_title": "Choose a pistol",
+  "vip.gun_menu.description": "{0} picks a round, or !{1}",
+  "vip.gun_menu.description.one": "1 pick a round, or !{0}",
+  "vip.gun_menu.title": "Gun menu",
+  "vip.gun_menu.primary": "Primary",
+  "vip.gun_menu.pistol": "Pistol",
+  "vip.gun_menu.loadout": "Loadout: {0}",
+  "vip.gun_menu.loadout.empty": "Loadout: nothing picked",
+  "vip.gun_menu.replaces": "Replaces the guns you hold",
+  "vip.gun_menu.adds": "Adds to the guns you hold",
+  "vip.gun_menu.give": "Give loadout",
+  "vip.gun_menu.closes_in": "Closes in {0}",
+  "vip.gun_menu.closed": "Closed until next round",
   "vip.gun_menu.error.limit_exceeded": "Wait for [red]next round [default]for gun menu to be available",
   "vip.gun_menu.error.command_only_for_players": "Only players can use gun menu command!"
 }

@@ -16,6 +16,22 @@ public class VipConfig
 public class GroupsConfig
 {
     public Dictionary<string, VipGroup> Groups { get; set; } = new();
+
+    /// <summary>Finds a group by name, ignoring case like the rest of VIPCore.</summary>
+    public (string Name, VipGroup Group)? Find(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return null;
+
+        foreach (var (key, group) in Groups)
+        {
+            if (key.Equals(name, StringComparison.OrdinalIgnoreCase))
+                return (key, group);
+        }
+
+        return null;
+    }
+
+    public int WeightOf(string? group) => Find(group)?.Group.Weight ?? int.MinValue;
 }
 
 public class VipGroup
@@ -28,4 +44,15 @@ public class VipGroup
     /// bind feature-specific settings without VIPCore needing to know the schema.
     /// </summary>
     public IConfigurationSection? ValuesSection { get; set; }
+
+    /// <summary>
+    /// The feature keys in the order the file lists them under Values. IConfiguration sorts keys,
+    /// so this is read from vip_groups.jsonc itself; empty when it could not be.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public List<string> FeatureOrder { get; set; } = new();
+
+    public bool HasFeature(string featureKey) => ValuesSection != null
+        ? ValuesSection.GetChildren().Any(c => c.Key.Equals(featureKey, StringComparison.OrdinalIgnoreCase))
+        : Values.ContainsKey(featureKey);
 }

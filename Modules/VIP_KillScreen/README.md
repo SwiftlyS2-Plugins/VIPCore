@@ -15,6 +15,8 @@
 
 VIP_KillScreen is a VIPCore module that applies a health shot screen effect to VIP players when they get a kill (excluding suicides). The effect duration is configurable per VIP group.
 
+In the VIP menu the perk reads, for example, *Healthshot screen effect for 1 s after a kill* (translation key `vip.killscreen.description`).
+
 ## Installation
 
 1. Place `VIP_KillScreen.dll` in `(swRoot)/plugins/VIP_KillScreen/`

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
@@ -10,7 +11,7 @@ using SwiftlyS2.Shared.GameEvents;
 
 namespace VIP_Speed;
 
-[PluginMetadata(Id = "VIP_Speed", Version = "1.0.0", Name = "VIP_Speed", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_Speed", Version = "1.0.1", Name = "VIP_Speed", Author = "aga", Description = "No description.")]
 public partial class VIP_Speed : BasePlugin {
   private const string FeatureKey = "vip.speed";
 
@@ -66,9 +67,28 @@ public partial class VIP_Speed : BasePlugin {
           null,
           displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.speed"]
       );
+      _vipApi.DescribeFeature(FeatureKey, Describe);
 
       _isFeatureRegistered = true;
       _vipApi.PlayerLoaded += OnPlayerLoaded;
+  }
+
+  private string? Describe(IPlayer player)
+  {
+      try
+      {
+          var speed = _vipApi?.GetFeatureValue<SpeedConfig>(player, FeatureKey)?.Speed ?? 0;
+          var percent = MathF.Round(MathF.Abs(speed - 1) * 100, 1);
+          if (speed <= 0 || percent == 0) return null;
+
+          return Core.Translation.GetPlayerLocalizer(player)[
+              speed > 1 ? "vip.speed.description.faster" : "vip.speed.description.slower",
+              percent.ToString("0.#", CultureInfo.InvariantCulture)];
+      }
+      catch
+      {
+          return null;
+      }
   }
 
   public class SpeedConfig

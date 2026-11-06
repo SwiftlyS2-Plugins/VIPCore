@@ -15,6 +15,8 @@
 
 VIP_ChatColor is a VIPCore module that gives VIP players a colored name in chat. Each VIP group can define a global name color as well as separate colors for CT and T players. Players can toggle the feature on/off from the VIP menu.
 
+In the VIP menu the perk reads *Your name in color in chat* when the group sets at least one color (translation key `vip.chatcolor.description`).
+
 ## Installation
 
 1. Place `VIP_ChatColor.dll` in `(swRoot)/plugins/VIP_ChatColor/`

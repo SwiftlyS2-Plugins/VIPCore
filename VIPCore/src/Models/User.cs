@@ -18,6 +18,8 @@ public class User
     [DatabaseGenerated(DatabaseGeneratedOption.None)]
     public required string group { get; set; }
     public long expires { get; set; }
+    /// <summary>Unix seconds the grant was made; 0 when it predates VIPCore 1.2.0.</summary>
+    public long granted { get; set; }
 }
 
 [System.ComponentModel.DataAnnotations.Schema.Table("vip_servers")]

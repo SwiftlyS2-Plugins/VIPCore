@@ -1,6 +1,7 @@
 using SwiftlyS2.Shared.Commands;
 using Microsoft.Extensions.DependencyInjection;
-using VIPCore.Services;
+using VIPCore.Contract;
+using VIPCore.Services.Menus;
 
 namespace VIPCore;
 
@@ -26,7 +27,6 @@ public sealed partial class VIPCore
         var player = context.Sender!;
         if (player == null) return;
 
-        var manageMenuService = serviceProvider.GetRequiredService<ManageMenuService>();
-        manageMenuService.OpenManageMenu(player);
+        serviceProvider.GetRequiredService<VipMenus>().OpenMenu(player, VipMenuIds.Users);
     }
 }

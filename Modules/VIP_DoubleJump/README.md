@@ -59,6 +59,8 @@ Settings:
 - **Boost**
   Upward velocity applied for the extra jump.
 
+In the VIP menu the perk reads *Jump again in mid-air* for `MaxJumps` 2, or *Jump N more times in mid-air* above that (translation keys `vip.doublejump.description*`).
+
 ## Publishing
 
 - Use the `dotnet publish -c Release` command to build and package your plugin.

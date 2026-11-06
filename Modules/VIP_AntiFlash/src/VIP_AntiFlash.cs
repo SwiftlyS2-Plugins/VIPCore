@@ -7,7 +7,7 @@ using VIPCore.Contract;
 
 namespace VIP_AntiFlash;
 
-[PluginMetadata(Id = "VIP_AntiFlash", Version = "1.0.0", Name = "[VIP] AntiFlash", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_AntiFlash", Version = "1.0.1", Name = "[VIP] AntiFlash", Author = "aga", Description = "No description.")]
 public class VIP_AntiFlash : BasePlugin
 {
     private const string FeatureKey = "vip.antiflash";
@@ -102,6 +102,7 @@ public class VIP_AntiFlash : BasePlugin
 
         _vipApi.RegisterFeature(FeatureKey, FeatureType.Toggle, null,
         displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.antiflash"]);
+        _vipApi.DescribeFeature(FeatureKey, p => Core.Translation.GetPlayerLocalizer(p)["vip.antiflash.description"]);
 
         _isFeatureRegistered = true;
 

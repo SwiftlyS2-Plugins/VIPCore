@@ -43,51 +43,21 @@ jobs:
           cache: true
           cache-dependency-path: "**/*.csproj"
 
-      - name: Restore and Publish
+      - name: Publish
         run: |
-          LOCAL_NUGET_SOURCE="$(pwd)/nupkgs"
-          mkdir -p "$LOCAL_NUGET_SOURCE"
-
-          CONTRACT_PROJECT="./VIPCore.Contract/VIPCore.Contract.csproj"
           VIPCORE_PROJECT="./VIPCore/VIPCore.csproj"
           MODULE_PROJECTS=$(find ./Modules -maxdepth 2 -name "*.csproj" -type f | sort)
 
-          echo "Building contract (produces DLL + local nupkg): $CONTRACT_PROJECT"
-          dotnet restore "$CONTRACT_PROJECT" \
-            --source "$LOCAL_NUGET_SOURCE" \
-            --source "https://api.nuget.org/v3/index.json"
-          dotnet build "$CONTRACT_PROJECT" -c Release
-
+          # No separate contract build: every project builds VIPCore.Contract through its ProjectReference.
           echo "Publishing VIPCore: $VIPCORE_PROJECT"
-          dotnet restore "$VIPCORE_PROJECT" \
-            --source "$LOCAL_NUGET_SOURCE" \
-            --source "https://api.nuget.org/v3/index.json"
           dotnet publish "$VIPCORE_PROJECT" -c Release
 
           echo "Publishing modules:"
           echo "$MODULE_PROJECTS"
           for PROJECT in $MODULE_PROJECTS; do
             echo "Publishing: $PROJECT"
-            dotnet restore "$PROJECT" \
-              --source "$LOCAL_NUGET_SOURCE" \
-              --source "https://api.nuget.org/v3/index.json"
             dotnet publish "$PROJECT" -c Release
           done
-
-      - name: Publish VIPCore.Contract to NuGet.org
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: |
-          NUPKG=$(find ./nupkgs -name "SwiftlyS2.VIPCore.Contract.*.nupkg" | sort -V | tail -1)
-          if [ -z "$NUPKG" ]; then
-            echo "::warning::No VIPCore.Contract nupkg found, skipping NuGet publish"
-            exit 0
-          fi
-          echo "Publishing $NUPKG to NuGet.org"
-          dotnet nuget push "$NUPKG" \
-            --api-key "$NUGET_API_KEY" \
-            --source "https://api.nuget.org/v3/index.json" \
-            --skip-duplicate
 
       - name: Prepare release artifacts
         id: zip

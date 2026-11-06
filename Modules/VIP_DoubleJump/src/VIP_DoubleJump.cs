@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
@@ -9,7 +10,7 @@ using VIPCore.Contract;
 
 namespace VIP_DoubleJump;
 
-[PluginMetadata(Id = "VIP_DoubleJump", Version = "1.0.0", Name = "VIP_DoubleJump", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_DoubleJump", Version = "1.0.1", Name = "VIP_DoubleJump", Author = "aga", Description = "No description.")]
 public partial class VIP_DoubleJump : BasePlugin {
   private const string FeatureKey = "vip.doublejump";
 
@@ -115,12 +116,32 @@ public partial class VIP_DoubleJump : BasePlugin {
       });
     },
     displayNameResolver: p => "Double Jump");
+    _vipApi.DescribeFeature(FeatureKey, Describe);
 
     _isFeatureRegistered = true;
 
     _vipApi.PlayerLoaded += OnPlayerLoaded;
     _vipApi.PlayerRemoved += OnPlayerRemoved;
     _vipApi.OnPlayerSpawn += OnPlayerSpawn;
+  }
+
+  // MaxJumps counts the jump off the ground, so MaxJumps - 1 are left for mid-air.
+  private string? Describe(IPlayer player)
+  {
+    try
+    {
+      var maxJumps = _vipApi?.GetFeatureValue<DoubleJumpConfig>(player, FeatureKey)?.MaxJumps ?? 0;
+      if (maxJumps <= 1) return null;
+
+      var localizer = Core.Translation.GetPlayerLocalizer(player);
+      return maxJumps == 2
+        ? localizer["vip.doublejump.description.one"]
+        : localizer["vip.doublejump.description", (maxJumps - 1).ToString(CultureInfo.InvariantCulture)];
+    }
+    catch
+    {
+      return null;
+    }
   }
 
   private void OnPlayerSpawn(IPlayer player)

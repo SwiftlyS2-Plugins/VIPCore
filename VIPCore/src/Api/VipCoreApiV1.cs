@@ -2,6 +2,7 @@ using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.Players;
 using VIPCore.Contract;
 using VIPCore.Services;
+using VIPCore.Services.Menus;
 using VIPCore.Config;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
@@ -30,6 +31,10 @@ public class VipCoreApiV1 : IVipCoreApiV1
     private VipService VipService => _serviceProvider!.GetRequiredService<VipService>();
     private GroupsConfig GroupsConfig => _serviceProvider!.GetRequiredService<GroupsConfig>();
     private CookieService CookieService => _serviceProvider!.GetRequiredService<CookieService>();
+    private FeatureViewService Views => _serviceProvider!.GetRequiredService<FeatureViewService>();
+    private MenuPageRegistry Pages => _serviceProvider!.GetRequiredService<MenuPageRegistry>();
+    private VipMenus Menus => _serviceProvider!.GetRequiredService<VipMenus>();
+    private VipDirectory Directory => _serviceProvider!.GetRequiredService<VipDirectory>();
     private VipConfig Config => _serviceProvider!.GetRequiredService<IOptionsMonitor<VipConfig>>().CurrentValue;
 
     public event Action<IPlayer>? OnPlayerSpawn;
@@ -158,12 +163,14 @@ public class VipCoreApiV1 : IVipCoreApiV1
 
         var steamId = (long)player.SteamID;
         var name = player.Controller?.PlayerName ?? "unknown";
+        var directory = Directory;
 
         Task.Run(async () =>
         {
             try
             {
                 await VipService.AddVip(steamId, name, group, time);
+                await directory.RefreshAsync(changed: true);
 
                 // Validate player is still valid before loading
                 if (!player.IsValid) return;
@@ -198,10 +205,12 @@ public class VipCoreApiV1 : IVipCoreApiV1
 
         var steamId = (long)player.SteamID;
         var group = GetClientVipGroup(player);
+        var directory = Directory;
 
         Task.Run(async () =>
         {
             await VipService.RemoveVip(steamId);
+            await directory.RefreshAsync(changed: true);
             if (!player.IsValid) return;
             await VipService.LoadPlayer(player);
 
@@ -321,5 +330,61 @@ public class VipCoreApiV1 : IVipCoreApiV1
         if (featureSection == null) return default;
 
         return featureSection.Get<T>() ?? new T();
+    }
+
+    public void DescribeFeature(string featureKey, Func<IPlayer, string?> description)
+    {
+        if (_serviceProvider == null || string.IsNullOrEmpty(featureKey) || description == null) return;
+
+        FeatureService.DescribeFeature(featureKey, description);
+    }
+
+    public void RegisterFeatureOptions(string featureKey, Func<IPlayer, IReadOnlyList<VipFeatureOption>> options, Func<IPlayer, string?> current, Action<IPlayer, string> choose)
+    {
+        if (_serviceProvider == null || string.IsNullOrEmpty(featureKey) || options == null || current == null || choose == null) return;
+
+        FeatureService.SetFeatureOptions(featureKey, new FeatureOptions(options, current, choose));
+    }
+
+    public void RegisterMenuPage(VipMenuPage page)
+    {
+        if (_serviceProvider == null) return;
+
+        Pages.Register(page);
+    }
+
+    public void UnregisterMenuPage(string pageId)
+    {
+        if (_serviceProvider == null) return;
+
+        Pages.Unregister(pageId);
+    }
+
+    public bool OpenMenu(IPlayer player, string? pageId = null)
+    {
+        if (_serviceProvider == null || player == null) return false;
+
+        return Menus.OpenMenu(player, pageId);
+    }
+
+    public VipFeatureView? GetFeatureView(IPlayer player, string featureKey)
+    {
+        if (_serviceProvider == null || player == null || string.IsNullOrEmpty(featureKey)) return null;
+
+        return Views.GetView(player, featureKey);
+    }
+
+    public IReadOnlyList<VipGrant> GetClientVipGrants(IPlayer player)
+    {
+        if (_serviceProvider == null || player == null) return [];
+
+        return Views.Grants(player);
+    }
+
+    public IReadOnlyList<VipGroupInfo> GetGroupInfos()
+    {
+        if (_serviceProvider == null) return [];
+
+        return Views.GroupInfos();
     }
 }

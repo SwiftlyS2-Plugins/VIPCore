@@ -1,3 +1,5 @@
 {
-  "hello": "world"
+  "hello": "world",
+  "vip.doublejump.description": "Jump {0} more times in mid-air",
+  "vip.doublejump.description.one": "Jump again in mid-air"
 }

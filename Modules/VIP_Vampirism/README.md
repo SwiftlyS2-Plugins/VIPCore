@@ -15,6 +15,15 @@
 
 VIP_Vampirism is a VIPCore module that allows VIP players to heal themselves by a percentage of the damage they deal to enemies. The heal percentage is configurable per VIP group and is capped at the player's max health.
 
+In the VIP menu the perk is described from the group's modes (translation keys `vip.vampirism.description*`):
+
+| Modes | Line |
+|-------|------|
+| OnDamage + Percent | *Heals 25% of the damage you deal* |
+| OnDamage + Flat | *Heals 5 HP for every hit you land* |
+| OnKill + Percent | *Heals 25% of your max HP per kill* |
+| OnKill + Flat | *Heals 50 HP per kill* |
+
 ## Installation
 
 1. Place `VIP_Vampirism.dll` in `(swRoot)/plugins/VIP_Vampirism/`

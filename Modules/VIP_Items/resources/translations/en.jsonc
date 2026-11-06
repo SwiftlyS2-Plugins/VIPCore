@@ -1,3 +1,5 @@
 {
-  "vip.items": "Items"
+  "vip.items": "Items",
+  "vip.items.description": "Free items every spawn",
+  "vip.items.description.no_pistol": "Free items on spawn, except pistol rounds"
 }

@@ -17,19 +17,14 @@ Add the following to your VIP group configuration in the database or JSON config
 ```json
 {
   "vip.money": {
-    "money": "++500" // To add 500$ each spawn
+    "money": "500" // Adds $500 at the end of each round
   }
 }
 ```
 
-Or to set an exact amount:
-```json
-{
-  "vip.money": {
-    "money": "16000" // To set exact amount to 16000$ each spawn
-  }
-}
-```
+The amount is always added to what the player has, capped at `mp_maxmoney`, and nothing is paid at the round ends the module treats as pistol rounds. The legacy `"++500"` form means the same as `"500"`.
+
+In the VIP menu the perk reads, for example, *+$500 every round* (translation key `vip.money.description`).
 
 ## Building
 

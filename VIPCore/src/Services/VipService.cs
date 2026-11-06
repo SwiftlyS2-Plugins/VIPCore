@@ -52,6 +52,21 @@ public class VipService(
         await LoadPlayerWithExpiredInfo(player);
     }
 
+    /// <summary>Reloads a player whose grants just changed, if they are still connected. Logs instead of throwing.</summary>
+    public async Task ReloadPlayer(IPlayer? player)
+    {
+        if (player is not { IsValid: true }) return;
+
+        try
+        {
+            await LoadPlayer(player);
+        }
+        catch (Exception ex)
+        {
+            core.Logger.LogError(ex, "[VIPCore] Failed to reload VIP player {SteamId}", player.SteamID);
+        }
+    }
+
     public async Task<string?> LoadPlayerWithExpiredInfo(IPlayer player, string? playerName = null)
     {
         if (player.IsFakeClient) return null;
@@ -107,7 +122,9 @@ public class VipService(
             sid = activeUser.sid,
             group = activeUser.group,
             expires = activeUser.expires,
-            OwnedGroups = validGroups.Select(u => u.group).Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+            granted = activeUser.granted,
+            OwnedGroups = validGroups.Select(u => u.group).Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
+            Grants = OrderGrants(validGroups, activeUser)
         };
 
         InitializeFeaturesForUser(vipUser);
@@ -143,6 +160,25 @@ public class VipService(
             .FirstOrDefault();
     }
 
+    /// <summary>The same priority ResolveHighestWeightGroup picks by, with the active grant forced first.</summary>
+    internal List<User> OrderGrants(IEnumerable<User> grants, User? active = null)
+    {
+        return DistinctGrants(grants)
+            .OrderByDescending(user => active != null && SameGrant(user, active))
+            .ThenByDescending(user => groupsConfig.WeightOf(user.group))
+            .ThenByDescending(user => user.sid == serverIdentifier.ServerId)
+            .ThenBy(user => user.group, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    // Legacy rows can hold one grant twice, under the AccountID and the SteamID64 form; keep the longer one.
+    private static IEnumerable<User> DistinctGrants(IEnumerable<User> grants) =>
+        grants.GroupBy(user => (user.sid, user.group.ToLowerInvariant()))
+            .Select(same => same.OrderBy(user => user.expires == 0 ? 0 : 1).ThenByDescending(user => user.expires).First());
+
+    private static bool SameGrant(User a, User b) =>
+        a.sid == b.sid && a.group.Equals(b.group, StringComparison.OrdinalIgnoreCase);
+
     public void OverrideVipGroup(IPlayer player, string group)
     {
         var logging = coreConfig.VipLogging;
@@ -150,16 +186,19 @@ public class VipService(
         if (!_users.TryGetValue(player.SteamID, out var user))
         {
             // Player has no VIP — create a temporary in-memory entry, no DB write
+            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var tempUser = new VipUser
             {
                 account_id = NormalizeToAccountId((long)player.SteamID),
                 name = player.Controller?.PlayerName ?? "unknown",
-                lastvisit = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                lastvisit = now,
                 sid = serverIdentifier.ServerId,
                 group = group,
                 expires = 0,
+                granted = now,
                 IsTemporary = true
             };
+            tempUser.Grants = [SyntheticGrant(tempUser, group)];
             InitializeFeaturesForUser(tempUser);
             _users[player.SteamID] = tempUser;
 
@@ -170,6 +209,7 @@ public class VipService(
 
         var oldGroup = user.group;
         user.group = group;
+        user.Grants = WithActiveGroup(user, group);
         user.FeatureStates.Clear();
         InitializeFeaturesForUser(user);
 
@@ -186,6 +226,29 @@ public class VipService(
         }
         return false;
     }
+
+    // An override makes its group the active one: a grant of it moves first, otherwise a synthetic one leads.
+    private static List<User> WithActiveGroup(VipUser user, string group)
+    {
+        if (user.IsTemporary)
+            return [SyntheticGrant(user, group)];
+
+        var held = user.Grants.FirstOrDefault(g => g.group.Equals(group, StringComparison.OrdinalIgnoreCase));
+        return held != null
+            ? [held, .. user.Grants.Where(g => !ReferenceEquals(g, held))]
+            : [SyntheticGrant(user, group), .. user.Grants];
+    }
+
+    private static User SyntheticGrant(VipUser user, string group) => new()
+    {
+        account_id = user.account_id,
+        name = user.name,
+        lastvisit = user.lastvisit,
+        sid = user.sid,
+        group = group,
+        expires = 0,
+        granted = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+    };
 
     public void UnloadPlayer(IPlayer player)
     {
@@ -239,6 +302,7 @@ public class VipService(
         var steamId64 = ToSteamId64(accountId);
         if (existingUser == null && steamId64 != accountId)
             existingUser = await userRepository.GetUserAsync(steamId64, serverId, group);
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         long expires;
 
         if (time <= 0)
@@ -247,7 +311,6 @@ public class VipService(
         }
         else if (existingUser != null && existingUser.group.Equals(group, StringComparison.OrdinalIgnoreCase) && existingUser.expires > 0)
         {
-            var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var remaining = existingUser.expires > now ? existingUser.expires - now : 0;
             
             // CalculateExpires(time) returns the absolute time in the future. 
@@ -259,18 +322,58 @@ public class VipService(
             expires = CalculateExpires(time);
         }
 
+        // A grant still running keeps the date it was first made; a lapsed or missing one starts now.
+        var running = existingUser != null && (existingUser.expires == 0 || existingUser.expires > now);
+        var granted = running && existingUser!.granted > 0 ? existingUser.granted : now;
+
         var user = new User
         {
             account_id = existingUser?.account_id ?? accountId,
             name = name,
-            lastvisit = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            lastvisit = now,
             sid = serverId,
             group = group,
-            expires = expires
+            expires = expires,
+            granted = granted
         };
 
         await userRepository.AddUserAsync(user);
     }
+
+    /// <summary>
+    /// Extends a stored grant by <paramref name="time"/> TimeMode units, counted from its expiry or from now
+    /// when that has passed. Returns the new expiry.
+    /// </summary>
+    public async Task<long> ExtendVip(User grant, int time)
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var from = grant.expires == 0 ? now : Math.Max(grant.expires, now);
+
+        var updated = CopyOf(grant);
+        updated.expires = AddTime(DateTimeOffset.FromUnixTimeSeconds(from), time);
+        if (updated.granted == 0) updated.granted = now;
+
+        await userRepository.UpdateUserAsync(updated);
+        return updated.expires;
+    }
+
+    public async Task MakeVipPermanent(User grant)
+    {
+        var updated = CopyOf(grant);
+        updated.expires = 0;
+        await userRepository.UpdateUserAsync(updated);
+    }
+
+    private static User CopyOf(User grant) => new()
+    {
+        account_id = grant.account_id,
+        name = grant.name,
+        lastvisit = grant.lastvisit,
+        sid = grant.sid,
+        group = grant.group,
+        expires = grant.expires,
+        granted = grant.granted
+    };
 
     public async Task RemoveVip(long accountId, bool global = false)
     {
@@ -340,13 +443,17 @@ public class VipService(
     private long CalculateExpires(int time)
     {
         if (time <= 0) return 0;
-        var now = DateTimeOffset.UtcNow;
+        return AddTime(DateTimeOffset.UtcNow, time);
+    }
+
+    private long AddTime(DateTimeOffset from, int time)
+    {
         return coreConfig.TimeMode switch
         {
-            1 => now.AddMinutes(time).ToUnixTimeSeconds(),
-            2 => now.AddHours(time).ToUnixTimeSeconds(),
-            3 => now.AddDays(time).ToUnixTimeSeconds(),
-            _ => now.AddSeconds(time).ToUnixTimeSeconds()
+            1 => from.AddMinutes(time).ToUnixTimeSeconds(),
+            2 => from.AddHours(time).ToUnixTimeSeconds(),
+            3 => from.AddDays(time).ToUnixTimeSeconds(),
+            _ => from.AddSeconds(time).ToUnixTimeSeconds()
         };
     }
 }

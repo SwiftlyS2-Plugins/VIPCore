@@ -1,3 +1,4 @@
 {
-  "vip.fastreload": "Fast Reload"
+  "vip.fastreload": "Fast Reload",
+  "vip.fastreload.description": "Reloads instantly"
 }

@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Microsoft.Extensions.Logging;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
@@ -18,13 +20,20 @@ public class ChatColorConfig
   public string T { get; set; } = "";
 }
 
-[PluginMetadata(Id = "VIP_Tag", Version = "1.0.0", Name = "VIP_Tag", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_Tag", Version = "1.1.0", Name = "VIP_Tag", Author = "aga", Description = "No description.")]
 public partial class VIP_Tag : BasePlugin {
   private const string FeatureKey = "vip.tag";
   private const string FeatureValueCookieKey = FeatureKey + ".value";
 
   private const int ApplyMaxAttempts = 5;
   private const float ApplyRetryDelaySeconds = 0.1f;
+
+  // The markup Helper.Colored() turns into chat colours, matched case-sensitively like it does.
+  private static readonly HashSet<string> ChatColorNames =
+  [
+    "default", "/", "white", "darkred", "lightpurple", "green", "olive", "lime", "red", "gray", "grey", "lightyellow",
+    "yellow", "silver", "bluegrey", "lightblue", "blue", "darkblue", "purple", "magenta", "lightred", "gold", "orange",
+  ];
 
   private IVipCoreApiV1? _vipApi;
   private bool _isFeatureRegistered;
@@ -167,9 +176,14 @@ public partial class VIP_Tag : BasePlugin {
 
     _vipApi.RegisterFeature(FeatureKey, FeatureType.Selectable, (player, state) =>
     {
-      Core.Scheduler.NextTick(() => CycleTag(player));
+      Core.Scheduler.NextTick(() =>
+      {
+        if (player.IsValid) _vipApi?.OpenMenu(player, VipMenuIds.Customize);
+      });
     },
-    displayNameResolver: p => "Tag");
+    displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.tag"]);
+    _vipApi.DescribeFeature(FeatureKey, p => ReadTags(p) == null ? null : Core.Translation.GetPlayerLocalizer(p)["vip.tag.description"]);
+    _vipApi.RegisterFeatureOptions(FeatureKey, GetTagOptions, GetCurrentTag, ChooseTag);
 
     _isFeatureRegistered = true;
     _vipApi.OnPlayerSpawn += OnPlayerSpawn;
@@ -177,38 +191,92 @@ public partial class VIP_Tag : BasePlugin {
     _vipApi.PlayerRemoved += OnPlayerRemoved;
   }
 
-  private void CycleTag(IPlayer player)
+  private IReadOnlyList<VipFeatureOption> GetTagOptions(IPlayer player)
   {
-    if (_vipApi == null) return;
-    if (!player.IsValid || player.IsFakeClient) return;
-    if (player.Slot < 0 || player.Slot >= _selectedTagIndices.Length) return;
-    if (!_vipApi.PlayerHasFeature(player, FeatureKey)) return;
-
-    var tags = _vipApi.GetFeatureValue<List<string>>(player, FeatureKey) ?? [];
-    var current = _selectedTagIndices[player.Slot];
-
-    var next = 0;
-    if (tags.Count > 0)
+    var options = new List<VipFeatureOption> { new("0", Core.Translation.GetPlayerLocalizer(player)["tag.None"]) };
+    var tags = ReadTags(player) ?? new List<string>();
+    for (var i = 0; i < tags.Count; i++)
     {
-      if (current <= 0)
-        next = 1;
-      else if (current >= tags.Count)
-        next = 0;
-      else
-        next = current + 1;
+      var (label, color) = ParseTag(tags[i] ?? string.Empty);
+      if (label.Length > 0)
+        options.Add(new((i + 1).ToString(CultureInfo.InvariantCulture), label, Color: color));
     }
 
-    SetTagIndex(player, next, save: true);
+    return options;
+  }
 
-    if (next <= 0)
+  private string? GetCurrentTag(IPlayer player)
+  {
+    if (player.Slot < 0 || player.Slot >= _selectedTagIndices.Length) return null;
+
+    var index = _selectedTagIndices[player.Slot];
+    var tags = ReadTags(player) ?? new List<string>();
+    // An index past the list, or a tag with no text, shows no tag at all.
+    return index > 0 && index <= tags.Count && ParseTag(tags[index - 1] ?? string.Empty).Label.Length > 0
+      ? index.ToString(CultureInfo.InvariantCulture)
+      : "0";
+  }
+
+  private void ChooseTag(IPlayer player, string id)
+  {
+    if (_vipApi == null || !player.IsValid || player.IsFakeClient || !_vipApi.PlayerHasFeature(player, FeatureKey)) return;
+    if (!int.TryParse(id, NumberStyles.None, CultureInfo.InvariantCulture, out var index)) return;
+
+    var tags = ReadTags(player) ?? new List<string>();
+    if (index > tags.Count) return;
+
+    SetTagIndex(player, index, save: true);
+
+    var localizer = Core.Translation.GetPlayerLocalizer(player);
+    player.SendMessage(MessageType.Chat, index == 0
+      ? localizer["tag.Off"]
+      : localizer["tag.On", ParseTag(tags[index - 1] ?? string.Empty).Label]);
+  }
+
+  private List<string>? ReadTags(IPlayer player)
+  {
+    try
     {
-      player.SendMessage(MessageType.Chat, "Tag: disabled");
+      return _vipApi?.GetFeatureValue<List<string>>(player, FeatureKey);
     }
-    else
+    catch
     {
-      var tag = tags[next - 1] ?? string.Empty;
-      player.SendMessage(MessageType.Chat, $"Tag: {tag}");
+      return null;
     }
+  }
+
+  // The tag as chat shows it: its text without colour markup, and the colour most of that text is in (null: chat's own).
+  private static (string Label, string? Color) ParseTag(string tag)
+  {
+    var label = new StringBuilder(tag.Length);
+    var counts = new List<(string? Color, int Count)>();
+    string? color = null;
+
+    for (var i = 0; i < tag.Length; i++)
+    {
+      if (tag[i] == '[')
+      {
+        var end = tag.IndexOf(']', i + 1);
+        if (end > i && ChatColorNames.Contains(tag[(i + 1)..end]))
+        {
+          var name = tag[(i + 1)..end];
+          color = name is "default" or "/" ? null : name;
+          i = end;
+          continue;
+        }
+      }
+
+      if (char.IsControl(tag[i])) continue;
+
+      label.Append(tag[i]);
+      if (char.IsWhiteSpace(tag[i])) continue;
+
+      var at = counts.FindIndex(c => c.Color == color);
+      if (at < 0) counts.Add((color, 1));
+      else counts[at] = (color, counts[at].Count + 1);
+    }
+
+    return (label.ToString().Trim(), counts.Count == 0 ? null : counts.MaxBy(c => c.Count).Color);
   }
 
   private void SetTagIndex(IPlayer player, int indexValue, bool save)

@@ -15,6 +15,8 @@
 
 VIP_RoundEndAbilities is a VIPCore module that automatically applies speed and gravity modifiers to alive VIP players when a round ends. The modifiers are configurable per VIP group, allowing survivors to have enhanced movement abilities during the round end period.
 
+In the VIP menu the perk reads, for example, *2× speed and 0.5× gravity after the round ends* (translation key `vip.round_end_abilities.description`).
+
 ## Installation
 
 1. Place `VIP_RoundEndAbilities.dll` in `(swRoot)/plugins/VIP_RoundEndAbilities/`

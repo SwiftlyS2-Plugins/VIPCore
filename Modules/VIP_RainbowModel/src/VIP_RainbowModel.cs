@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
@@ -11,7 +12,7 @@ using VIPCore.Contract;
 
 namespace VIP_RainbowModel;
 
-[PluginMetadata(Id = "VIP_RainbowModel", Version = "1.0.0", Name = "VIP_RainbowModel", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_RainbowModel", Version = "1.0.1", Name = "VIP_RainbowModel", Author = "aga", Description = "No description.")]
 public partial class VIP_RainbowModel : BasePlugin
 {
   private const string FeatureKey = "vip.rainbowmodel";
@@ -96,9 +97,26 @@ public partial class VIP_RainbowModel : BasePlugin
       OnSelectItem,
       displayNameResolver: _ => "Rainbow Model"
     );
+    _vipApi.DescribeFeature(FeatureKey, Describe);
 
     _isFeatureRegistered = true;
     _vipApi.OnPlayerSpawn += OnVipPlayerSpawn;
+  }
+
+  private string? Describe(IPlayer player)
+  {
+    try
+    {
+      var config = _vipApi?.GetFeatureValue<RainbowModelConfig>(player, FeatureKey);
+      if (config == null || !config.Enabled) return null;
+
+      var interval = config.IntervalSeconds > 0.0f ? config.IntervalSeconds : DefaultIntervalSeconds;
+      return Core.Translation.GetPlayerLocalizer(player)["vip.rainbowmodel.description", interval.ToString("0.##", CultureInfo.InvariantCulture)];
+    }
+    catch
+    {
+      return null;
+    }
   }
 
   private void OnClientConnected(IOnClientConnectedEvent @event)

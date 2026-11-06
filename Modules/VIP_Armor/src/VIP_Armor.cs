@@ -1,3 +1,4 @@
+using System.Globalization;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.GameEventDefinitions;
@@ -8,7 +9,7 @@ using VIPCore.Contract;
 
 namespace VIP_Armor;
 
-[PluginMetadata(Id = "VIP_Armor", Version = "1.0.0", Name = "VIP_Armor", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_Armor", Version = "1.0.1", Name = "VIP_Armor", Author = "aga", Description = "No description.")]
 public partial class VIP_Armor : BasePlugin {
   private const string FeatureKey = "vip.armor";
   private const float ApplyRetryDelaySeconds = 0.05f;
@@ -99,9 +100,25 @@ public partial class VIP_Armor : BasePlugin {
       null,
       displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.armor"]
     );
+    _vipApi.DescribeFeature(FeatureKey, Describe);
 
     _isFeatureRegistered = true;
     _vipApi.OnPlayerSpawn += OnVipPlayerSpawn;
+  }
+
+  private string? Describe(IPlayer player)
+  {
+    try
+    {
+      var armor = _vipApi?.GetFeatureValue<ArmorConfig>(player, FeatureKey)?.Armor ?? 0;
+      return armor > 0
+        ? Core.Translation.GetPlayerLocalizer(player)["vip.armor.description", armor.ToString(CultureInfo.InvariantCulture)]
+        : null;
+    }
+    catch
+    {
+      return null;
+    }
   }
 
   private void OnVipPlayerSpawn(IPlayer player)

@@ -1,3 +1,5 @@
 {
-  "vip.speed": "Speed"
+  "vip.speed": "Speed",
+  "vip.speed.description.faster": "Moves {0}% faster",
+  "vip.speed.description.slower": "Moves {0}% slower"
 }

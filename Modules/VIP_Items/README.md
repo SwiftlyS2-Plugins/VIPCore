@@ -15,6 +15,8 @@
 
 VIP_Items is a VIPCore module that automatically gives VIP players a customizable list of weapons and items when they spawn. The items list is configurable per VIP group, and the plugin prevents duplicate items from being given.
 
+In the VIP menu the perk reads *Free items every spawn*, or *Free items on spawn, except pistol rounds* when `GiveOnPistolRounds` is off (translation keys `vip.items.description*`).
+
 ## Installation
 
 1. Place `VIP_Items.dll` in `(swRoot)/plugins/VIP_Items/`

@@ -13,6 +13,8 @@
 
 VIP_Flags is a plugin for Swiftly2 that allows server owners to grant specific permissions to VIP players based on their VIP group configuration. This plugin integrates with the VIP API to check players' VIP status and apply or remove permissions accordingly.
 
+In the VIP menu the perk reads, for example, *Unlocks 2 server permissions*, counted from the group's `Permissions` (translation keys `vip.flags.description*`).
+
 ## Installation
 
 1. Place `VIP_Flags.dll` in `(swRoot)/plugins/VIP_Flags/`

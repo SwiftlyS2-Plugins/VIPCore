@@ -1,3 +1,4 @@
 {
-  "vip.nofalldamage": "No Fall Damage"
+  "vip.nofalldamage": "No Fall Damage",
+  "vip.nofalldamage.description": "Land from any height"
 }

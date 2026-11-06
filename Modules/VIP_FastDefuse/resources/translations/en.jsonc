@@ -1,3 +1,5 @@
 {
-  "hello": "world"
+  "hello": "world",
+  "vip.fastdefuse.description": "Defuses {0}× faster",
+  "vip.fastdefuse.description.seconds": "Defuses in {0} s"
 }

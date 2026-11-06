@@ -13,7 +13,9 @@
 
 ## Description
 
-VIP_Fov is a VIPCore module that allows VIP players to customize their Field of View (FOV). Players can cycle through preset FOV values (90, 100, 110, 120) using the VIP menu.
+VIP_Fov is a VIPCore module that allows VIP players to customize their Field of View (FOV). Players pick a preset FOV on the **Customize** page of the VIP menu (`!vip`), where each value is listed with a short description; selecting the perk anywhere else in the VIP menu opens that page. The choice is saved and applied again on every spawn.
+
+In the VIP menu the perk reads *How wide you see* (translation key `vip.fov.description`).
 
 ## Installation
 
@@ -48,12 +50,17 @@ Add the fov feature to your `vip_groups.jsonc` file:
 
 | Value | Description |
 |-------|-------------|
-| `1` | Feature enabled by default (player can cycle through FOV values) |
+| `1` | Feature enabled by default (player can pick an FOV on the Customize page) |
 | `0` | Feature disabled by default |
 
 ### Available FOV Values
 
-Players can cycle through: 90, 100, 110, 120
+| FOV | Shown as |
+|-----|----------|
+| 90 | *The game's own view* (the default) |
+| 100 | *A little wider* |
+| 110 | *Wider* |
+| 120 | *Widest* |
 
 ## Building
 

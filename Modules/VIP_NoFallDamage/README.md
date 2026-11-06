@@ -15,6 +15,8 @@
 
 VIP_NoFallDamage is a VIPCore module that prevents VIP players from taking fall damage when the feature is enabled.
 
+In the VIP menu the perk reads *Land from any height* (translation key `vip.nofalldamage.description`).
+
 ## Installation
 
 1. Place `VIP_NoFallDamage.dll` in `(swRoot)/plugins/VIP_NoFallDamage/`

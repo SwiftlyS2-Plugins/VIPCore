@@ -15,6 +15,8 @@
 
 VIP_FastReload is a VIPCore module that gives VIP players instant weapon reloads. When enabled, reloading or firing an empty weapon will immediately refill the clip to maximum capacity.
 
+In the VIP menu the perk reads *Reloads instantly* (translation key `vip.fastreload.description`).
+
 ## Installation
 
 1. Place `VIP_FastReload.dll` in `(swRoot)/plugins/VIP_FastReload/`

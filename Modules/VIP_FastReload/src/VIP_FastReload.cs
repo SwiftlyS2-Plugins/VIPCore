@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 
 namespace VIP_FastReload;
 
-[PluginMetadata(Id = "VIP_FastReload", Version = "1.0.0", Name = "[VIP] FastReload", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_FastReload", Version = "1.0.1", Name = "[VIP] FastReload", Author = "aga", Description = "No description.")]
 public partial class VIP_FastReload : BasePlugin
 {
     private const string FeatureKey = "vip.fastreload";
@@ -162,6 +162,7 @@ public partial class VIP_FastReload : BasePlugin
             });
         },
         displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.fastreload"]);
+        _vipApi.DescribeFeature(FeatureKey, p => Core.Translation.GetPlayerLocalizer(p)["vip.fastreload.description"]);
 
         _isFeatureRegistered = true;
 

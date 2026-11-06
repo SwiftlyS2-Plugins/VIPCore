@@ -1,3 +1,4 @@
+using System.Globalization;
 using SwiftlyS2.Shared.Plugins;
 using SwiftlyS2.Shared;
 using SwiftlyS2.Shared.GameEventDefinitions;
@@ -9,7 +10,7 @@ using SwiftlyS2.Shared.SchemaDefinitions;
 
 namespace VIP_RoundEndAbilities;
 
-[PluginMetadata(Id = "VIP_RoundEndAbilities", Version = "1.0.0", Name = "VIP_RoundEndAbilities", Author = "shmitz", Description = "Gives items when player spawns")]
+[PluginMetadata(Id = "VIP_RoundEndAbilities", Version = "1.0.1", Name = "VIP_RoundEndAbilities", Author = "shmitz", Description = "Gives items when player spawns")]
 public partial class VIP_RoundEndAbilities : BasePlugin
 {
     private const string FeatureKey = "vip.round_end_abilities";
@@ -69,8 +70,26 @@ public partial class VIP_RoundEndAbilities : BasePlugin
             null,
             displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.round_end_abilities"]
         );
+        _vipApi.DescribeFeature(FeatureKey, Describe);
 
         _isFeatureRegistered = true;
+    }
+
+    private string? Describe(IPlayer player)
+    {
+        try
+        {
+            var config = _vipApi?.GetFeatureValue<Config>(player, FeatureKey);
+            if (config == null || (config.SpeedModifier == 1f && config.GravityModifier == 1f)) return null;
+
+            return Core.Translation.GetPlayerLocalizer(player)["vip.round_end_abilities.description",
+                config.SpeedModifier.ToString("0.##", CultureInfo.InvariantCulture),
+                config.GravityModifier.ToString("0.##", CultureInfo.InvariantCulture)];
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     [GameEventHandler(HookMode.Post)]

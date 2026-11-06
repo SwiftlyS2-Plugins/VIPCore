@@ -36,6 +36,7 @@ Add the `"vip.speed"` feature to the VIP groups you want to have this module ena
 }
 ```
 * Note: `Speed` is a float value where `1.0` is normal speed. Values above `1.0` will make the player faster (e.g., `1.2` is 20% faster). Values below `1.0` will make the player slower.
+* In the VIP menu the perk reads, for example, *Moves 20% faster* (or *slower*), worked out from `Speed` (translation keys `vip.speed.description.faster` / `.slower`).
 
 ## Building from source
 - Open the project in your preferred .NET IDE (e.g., Visual Studio, Rider, VS Code).

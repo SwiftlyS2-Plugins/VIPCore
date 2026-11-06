@@ -15,6 +15,8 @@
 
 VIP_Armor is a VIPCore module that gives VIP players armor and a helmet when they spawn. The armor amount is configurable per VIP group.
 
+In the VIP menu the perk reads, for example, *100 armor and a helmet*, filled in from the player's group (translation key `vip.armor.description`).
+
 ## Installation
 
 1. Place `VIP_Armor.dll` in `(swRoot)/plugins/VIP_Armor/`
