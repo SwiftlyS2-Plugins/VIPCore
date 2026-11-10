@@ -293,7 +293,15 @@ public class VipService(
         }
     }
 
-    public async Task AddVip(long accountId, string name, string group, int time, bool global = false)
+    public Task AddVip(long accountId, string name, string group, int time, bool global = false) =>
+        AddVip(accountId, name, group, time <= 0 ? null : () => CalculateExpires(time), global);
+
+    /// <summary>As the TimeMode overload, for an exact length; zero or less is permanent.</summary>
+    public Task AddVip(long accountId, string name, string group, TimeSpan length, bool global = false) =>
+        AddVip(accountId, name, group, length <= TimeSpan.Zero ? null : () => DateTimeOffset.UtcNow.Add(length).ToUnixTimeSeconds(), global);
+
+    /// <param name="calculateExpires">The expiry of a grant starting now; null grants permanently.</param>
+    private async Task AddVip(long accountId, string name, string group, Func<long>? calculateExpires, bool global)
     {
         accountId = NormalizeToAccountId(accountId);
         var serverId = global ? 0 : serverIdentifier.ServerId;
@@ -305,7 +313,7 @@ public class VipService(
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         long expires;
 
-        if (time <= 0)
+        if (calculateExpires == null)
         {
             expires = 0; // Permanent
         }
@@ -313,13 +321,13 @@ public class VipService(
         {
             var remaining = existingUser.expires > now ? existingUser.expires - now : 0;
             
-            // CalculateExpires(time) returns the absolute time in the future. 
+            // calculateExpires() returns the absolute time in the future. 
             // We need to add the remaining seconds to that.
-            expires = CalculateExpires(time) + remaining;
+            expires = calculateExpires() + remaining;
         }
         else
         {
-            expires = CalculateExpires(time);
+            expires = calculateExpires();
         }
 
         // A grant still running keeps the date it was first made; a lapsed or missing one starts now.

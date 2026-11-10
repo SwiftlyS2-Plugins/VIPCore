@@ -27,6 +27,9 @@ public interface IVipCoreApiV1
     /// </summary>
     public void GiveClientVip(IPlayer player, string group, int time);
 
+    /// <summary>Grants VIP for an exact length, whatever the server's TimeMode is (contract 1.2.0).</summary>
+    public void GiveClientVip(IPlayer player, string group, TimeSpan duration);
+
     /// <summary>
     /// Removes VIP from a player. Does nothing if the player is not VIP.
     /// </summary>

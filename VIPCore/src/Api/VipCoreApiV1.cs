@@ -57,6 +57,26 @@ public class VipCoreApiV1 : IVipCoreApiV1
 
     internal void RaiseOnPlayerSpawn(IPlayer player) => OnPlayerSpawn?.Invoke(player);
 
+    /// <summary>Reloads a player whose grants changed, then raises PlayerLoaded, or PlayerRemoved when no group is left.</summary>
+    internal async Task ReloadPlayer(IPlayer? player)
+    {
+        if (_serviceProvider == null || player is not { IsValid: true }) return;
+
+        var before = GetClientVipGroup(player);
+        await VipService.ReloadPlayer(player);
+
+        _core.Scheduler.NextTick(() =>
+        {
+            if (!player.IsValid) return;
+
+            var after = GetClientVipGroup(player);
+            if (after.Length > 0)
+                RaisePlayerLoaded(player, after);
+            else if (before.Length > 0)
+                RaisePlayerRemoved(player, before);
+        });
+    }
+
     public void RegisterFeature(string featureKey, FeatureType featureType = FeatureType.Toggle, Action<IPlayer, FeatureState>? onSelectItem = null, Func<IPlayer, string>? displayNameResolver = null)
     {
         if (Config.VipLogging)
@@ -156,7 +176,13 @@ public class VipCoreApiV1 : IVipCoreApiV1
 
     public bool IsClientVip(IPlayer player) => VipService.IsClientVip(player);
 
-    public void GiveClientVip(IPlayer player, string group, int time)
+    public void GiveClientVip(IPlayer player, string group, int time) =>
+        GiveClientVip(player, (steamId, name) => VipService.AddVip(steamId, name, group, time));
+
+    public void GiveClientVip(IPlayer player, string group, TimeSpan duration) =>
+        GiveClientVip(player, (steamId, name) => VipService.AddVip(steamId, name, group, duration));
+
+    private void GiveClientVip(IPlayer player, Func<long, string, Task> add)
     {
         if (_serviceProvider == null) return;
         if (!player.IsValid) return;
@@ -169,7 +195,7 @@ public class VipCoreApiV1 : IVipCoreApiV1
         {
             try
             {
-                await VipService.AddVip(steamId, name, group, time);
+                await add(steamId, name);
                 await directory.RefreshAsync(changed: true);
 
                 // Validate player is still valid before loading

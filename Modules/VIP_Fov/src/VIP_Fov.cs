@@ -11,7 +11,7 @@ using VIPCore.Contract;
 
 namespace VIP_Fov;
 
-[PluginMetadata(Id = "VIP_Fov", Version = "1.1.0", Name = "VIP_Fov", Author = "aga", Description = "Allows VIPs to change their FOV.")]
+[PluginMetadata(Id = "VIP_Fov", Version = "1.1.1", Name = "VIP_Fov", Author = "aga", Description = "Allows VIPs to change their FOV.")]
 public partial class VIP_Fov : BasePlugin {
     private const uint DefaultFov = 90;
     private const string FeatureKey = "vip.fov";
@@ -60,6 +60,7 @@ public partial class VIP_Fov : BasePlugin {
                 
             _vipApi.OnPlayerSpawn -= OnPlayerSpawn;
             _vipApi.PlayerLoaded -= OnPlayerLoaded;
+            _vipApi.PlayerRemoved -= OnPlayerRemoved;
         }
     }
 
@@ -91,6 +92,7 @@ public partial class VIP_Fov : BasePlugin {
         _isFeatureRegistered = true;
         _vipApi.OnPlayerSpawn += OnPlayerSpawn;
         _vipApi.PlayerLoaded += OnPlayerLoaded;
+        _vipApi.PlayerRemoved += OnPlayerRemoved;
     }
 
     private void OnPlayerLoaded(IPlayer player, string group)
@@ -98,10 +100,26 @@ public partial class VIP_Fov : BasePlugin {
         if (_vipApi == null) return;
         if (!player.IsValid || player.IsFakeClient) return;
         if (!_vipApi.PlayerHasFeature(player, FeatureKey))
+        {
+            ResetFov(player);
             return;
+        }
 
         LoadFovFromCookie(player);
         ApplyFov(player);
+    }
+
+    private void OnPlayerRemoved(IPlayer player, string group)
+    {
+        if (!player.IsValid || player.IsFakeClient) return;
+        ResetFov(player);
+    }
+
+    // Back to the game's FOV for a player who no longer has the feature; their saved choice is kept.
+    private void ResetFov(IPlayer player)
+    {
+        if (player.Slot < 0 || player.Slot >= _fovSettings.Length || _fovSettings[player.Slot] == DefaultFov) return;
+        SetFov(player, DefaultFov, save: false);
     }
 
     // The game's own FOV first, then each wider one described by where it sits.
@@ -161,6 +179,11 @@ public partial class VIP_Fov : BasePlugin {
     {
         if (_vipApi == null) return;
         if (!player.IsValid || player.IsFakeClient) return;
+        if (!_vipApi.PlayerHasFeature(player, FeatureKey))
+        {
+            ResetFov(player);
+            return;
+        }
 
         LoadFovFromCookie(player);
         ApplyFov(player);

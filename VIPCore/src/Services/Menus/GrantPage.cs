@@ -3,6 +3,7 @@ using SwiftlyS2.Shared.Menu;
 using SwiftlyS2.Shared.Menu.Components;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Translation;
+using VIPCore.Api;
 using VIPCore.Contract;
 
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,7 @@ public sealed class GrantState
 }
 
 /// <summary>Grant VIP: player, group, scope and length on one page, then Grant.</summary>
-public class GrantPage(MenuKit kit, VipService vipService, VipDirectory directory, FeatureViewService views)
+public class GrantPage(MenuKit kit, VipService vipService, VipDirectory directory, FeatureViewService views, VipCoreApiV1 api)
 {
     private const ulong SteamId64Base = 76561197960265728UL;
     private const string SearchId = "search";
@@ -241,7 +242,7 @@ public class GrantPage(MenuKit kit, VipService vipService, VipDirectory director
 
             if (error == null)
             {
-                await vipService.ReloadPlayer(target);
+                await api.ReloadPlayer(target);
                 await directory.RefreshAsync(changed: true);
             }
 
