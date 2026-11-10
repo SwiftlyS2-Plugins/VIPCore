@@ -7,7 +7,7 @@ using VIPCore.Contract;
 
 namespace VIP_AntiFlash;
 
-[PluginMetadata(Id = "VIP_AntiFlash", Version = "1.1.0", Name = "[VIP] AntiFlash", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_AntiFlash", Version = "1.0.1", Name = "[VIP] AntiFlash", Author = "aga", Description = "No description.")]
 public class VIP_AntiFlash : BasePlugin
 {
     private const string FeatureKey = "vip.antiflash";
@@ -69,21 +69,22 @@ public class VIP_AntiFlash : BasePlugin
         var pawn = controller.PlayerPawn.Value;
         if (pawn == null || !pawn.IsValid) return HookResult.Continue;
 
+        var featureValue = 0;
         var attacker = @event.Accessor.GetPlayer("attacker");
 
         var sameTeam = attacker != null && attacker.Controller?.Team == player.Controller?.Team;
 
-        switch (ReadMode(player))
+        switch (featureValue)
         {
-            case AntiFlashMode.Teammates:
+            case 1:
                 if (sameTeam && player.Slot != attacker?.Slot)
                     pawn.FlashDuration = 0.0f;
                 break;
-            case AntiFlashMode.Own:
+            case 2:
                 if (player.Slot == attacker?.Slot)
                     pawn.FlashDuration = 0.0f;
                 break;
-            case AntiFlashMode.TeammatesAndOwn:
+            case 3:
                 if (sameTeam || player.Slot == attacker?.Slot)
                     pawn.FlashDuration = 0.0f;
                 break;
@@ -95,32 +96,13 @@ public class VIP_AntiFlash : BasePlugin
         return HookResult.Continue;
     }
 
-    // A bare value such as "vip.antiflash": 1 binds no Mode, so it keeps full immunity.
-    private AntiFlashMode ReadMode(IPlayer player)
-    {
-        try
-        {
-            return _vipApi?.GetFeatureValue<AntiFlashConfig>(player, FeatureKey)?.Mode ?? AntiFlashMode.All;
-        }
-        catch
-        {
-            return AntiFlashMode.All;
-        }
-    }
-
     private void RegisterVipFeatures()
     {
         if (_vipApi == null || _isFeatureRegistered) return;
 
         _vipApi.RegisterFeature(FeatureKey, FeatureType.Toggle, null,
         displayNameResolver: p => Core.Translation.GetPlayerLocalizer(p)["vip.antiflash"]);
-        _vipApi.DescribeFeature(FeatureKey, p => Core.Translation.GetPlayerLocalizer(p)[ReadMode(p) switch
-        {
-            AntiFlashMode.Teammates => "vip.antiflash.description.teammates",
-            AntiFlashMode.Own => "vip.antiflash.description.own",
-            AntiFlashMode.TeammatesAndOwn => "vip.antiflash.description.teammates_own",
-            _ => "vip.antiflash.description",
-        }]);
+        _vipApi.DescribeFeature(FeatureKey, p => Core.Translation.GetPlayerLocalizer(p)["vip.antiflash.description"]);
 
         _isFeatureRegistered = true;
 
@@ -134,17 +116,4 @@ public class VIP_AntiFlash : BasePlugin
         if (_vipApi == null) return;
         _vipApi.UnregisterFeature(FeatureKey);
     }
-}
-
-public enum AntiFlashMode
-{
-    All = 0,
-    Teammates = 1,
-    Own = 2,
-    TeammatesAndOwn = 3
-}
-
-public class AntiFlashConfig
-{
-    public AntiFlashMode Mode { get; set; } = AntiFlashMode.All;
 }

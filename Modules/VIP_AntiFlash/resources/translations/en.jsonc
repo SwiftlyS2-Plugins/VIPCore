@@ -2,8 +2,5 @@
   "vip.antiflash": "Anti-Flash",
   "antiflash.Enabled": "[blue]Anti-Flash[default]: [green]Enabled[default]",
   "antiflash.Disabled": "[blue]Anti-Flash[default]: [red]Disabled[default]",
-  "vip.antiflash.description": "Flashbangs can't blind you",
-  "vip.antiflash.description.teammates": "Teammates' flashbangs can't blind you",
-  "vip.antiflash.description.own": "Your own flashbangs can't blind you",
-  "vip.antiflash.description.teammates_own": "Your own and teammates' flashbangs can't blind you"
+  "vip.antiflash.description": "Flashbangs can't blind you"
 }

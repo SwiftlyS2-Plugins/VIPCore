@@ -4,9 +4,6 @@ using SwiftlyS2.Shared.Events;
 using SwiftlyS2.Shared.Commands;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Translation;
-using SwiftlyS2.Shared.GameEventDefinitions;
-using SwiftlyS2.Shared.GameEvents;
-using SwiftlyS2.Shared.Misc;
 using Cookies.Contract;
 using VIPCore.Services;
 using VIPCore.Services.Menus;
@@ -68,6 +65,8 @@ public sealed partial class VIPCore : BasePlugin
     {
         var player = Core.PlayerManager.GetPlayer(@event.PlayerId);
         if (player == null || player.IsFakeClient) return;
+
+        _vipCoreApi.RaiseOnPlayerSpawn(player);
 
         var vipService = _serviceProvider!.GetRequiredService<VipService>();
         var steamId = player.SteamID;
@@ -131,16 +130,6 @@ public sealed partial class VIPCore : BasePlugin
                 Core.Logger.LogError(ex, "[VIPCore] Failed to load player {SteamId} on connect.", steamId);
             }
         });
-    }
-
-    [GameEventHandler(HookMode.Post)]
-    public HookResult OnPlayerSpawn(EventPlayerSpawn @event)
-    {
-        var player = @event.UserIdPlayer;
-        if (player != null && player.IsValid && !player.IsFakeClient)
-            _vipCoreApi.RaiseOnPlayerSpawn(player);
-
-        return HookResult.Continue;
     }
 
     private void CheckOnlineVipExpirations()

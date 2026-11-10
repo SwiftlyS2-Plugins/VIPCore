@@ -22,12 +22,12 @@ public interface IVipCoreApiV1
     public bool PlayerHasFeature(IPlayer player, string featureKey);
 
     /// <summary>
-    /// Grants a group on this server. <paramref name="time"/> is in TimeMode units; 0 or less is permanent.
-    /// Time given for a group the player holds extends it, and a permanent grant stays permanent.
+    /// Grants VIP to a player. Time interpretation depends on the server's TimeMode setting.
+    /// If the player is already VIP, this does nothing.
     /// </summary>
     public void GiveClientVip(IPlayer player, string group, int time);
 
-    /// <summary>As the int overload, for an exact length whatever TimeMode is (contract 1.2.0).</summary>
+    /// <summary>Grants VIP for an exact length, whatever the server's TimeMode is (contract 1.2.0).</summary>
     public void GiveClientVip(IPlayer player, string group, TimeSpan duration);
 
     /// <summary>
@@ -62,7 +62,6 @@ public interface IVipCoreApiV1
     /// </summary>
     public T? GetFeatureValue<T>(IPlayer player, string featureKey) where T : class, new();
 
-    /// <summary>Raised after every spawn of a human player, VIP or not.</summary>
     public event Action<IPlayer>? OnPlayerSpawn;
     public event Action<IPlayer, string>? PlayerLoaded;
     public event Action<IPlayer, string>? PlayerRemoved;
