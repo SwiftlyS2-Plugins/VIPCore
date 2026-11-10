@@ -2,6 +2,7 @@ using SwiftlyS2.Shared.Menu;
 using SwiftlyS2.Shared.Menu.Components;
 using SwiftlyS2.Shared.Players;
 using SwiftlyS2.Shared.Translation;
+using VIPCore.Api;
 using VIPCore.Contract;
 using VIPCore.Models;
 
@@ -21,7 +22,7 @@ internal sealed class UsersState(DirectorySnapshot snapshot)
 }
 
 /// <summary>VIP users: a host of tabs (all users, then one per group) over the list pages.</summary>
-public class UserPages(MenuKit kit, VipService vipService, VipDirectory directory, FeatureViewService views, GrantPage grantPage)
+public class UserPages(MenuKit kit, VipService vipService, VipDirectory directory, FeatureViewService views, GrantPage grantPage, VipCoreApiV1 api)
 {
     public static bool IsUsersPage(string pageId) =>
         pageId.Equals(VipMenuIds.Users, StringComparison.OrdinalIgnoreCase)
@@ -302,7 +303,7 @@ public class UserPages(MenuKit kit, VipService vipService, VipDirectory director
 
             if (error == null)
             {
-                await vipService.ReloadPlayer(target);
+                await api.ReloadPlayer(target);
                 try
                 {
                     snapshot = await directory.ChangedAsync();
