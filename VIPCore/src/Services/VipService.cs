@@ -293,7 +293,15 @@ public class VipService(
         }
     }
 
-    public async Task AddVip(long accountId, string name, string group, int time, bool global = false)
+    public Task AddVip(long accountId, string name, string group, int time, bool global = false) =>
+        AddVip(accountId, name, group, time <= 0 ? null : from => AddTime(from, time), global);
+
+    /// <summary>Grants for an exact length whatever TimeMode is; zero or less is permanent.</summary>
+    public Task AddVip(long accountId, string name, string group, TimeSpan length, bool global = false) =>
+        AddVip(accountId, name, group, length <= TimeSpan.Zero ? null : from => from.Add(length).ToUnixTimeSeconds(), global);
+
+    /// <param name="expiresFrom">The expiry for a length counted from a moment; null grants permanently.</param>
+    private async Task AddVip(long accountId, string name, string group, Func<DateTimeOffset, long>? expiresFrom, bool global)
     {
         accountId = NormalizeToAccountId(accountId);
         var serverId = global ? 0 : serverIdentifier.ServerId;
@@ -305,21 +313,18 @@ public class VipService(
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         long expires;
 
-        if (time <= 0)
+        // Time added to a permanent grant would make it run out, so it stays permanent.
+        if (expiresFrom == null || existingUser is { expires: 0 })
         {
-            expires = 0; // Permanent
+            expires = 0;
         }
-        else if (existingUser != null && existingUser.group.Equals(group, StringComparison.OrdinalIgnoreCase) && existingUser.expires > 0)
+        else if (existingUser != null && existingUser.expires > now)
         {
-            var remaining = existingUser.expires > now ? existingUser.expires - now : 0;
-            
-            // CalculateExpires(time) returns the absolute time in the future. 
-            // We need to add the remaining seconds to that.
-            expires = CalculateExpires(time) + remaining;
+            expires = expiresFrom(DateTimeOffset.FromUnixTimeSeconds(existingUser.expires));
         }
         else
         {
-            expires = CalculateExpires(time);
+            expires = expiresFrom(DateTimeOffset.UtcNow);
         }
 
         // A grant still running keeps the date it was first made; a lapsed or missing one starts now.
@@ -438,12 +443,6 @@ public class VipService(
                 core.Logger.LogDebug("[VIPCore] Initialized late-registered feature '{Feature}' for loaded player {AccountId} (Group: {Group}, State: {State})",
                 featureKey, user.account_id, user.group, user.FeatureStates[featureKey]);
         }
-    }
-
-    private long CalculateExpires(int time)
-    {
-        if (time <= 0) return 0;
-        return AddTime(DateTimeOffset.UtcNow, time);
     }
 
     private long AddTime(DateTimeOffset from, int time)

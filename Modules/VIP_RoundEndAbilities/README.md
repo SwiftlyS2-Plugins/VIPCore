@@ -33,7 +33,7 @@ Add the round end abilities feature to your `vip_groups.jsonc` file:
 	"Groups": {
 	  "GOLD": {
 		"Values": {
-		  "vip.vip.round_end_abilities": {
+		  "vip.round_end_abilities": {
 			"SpeedModifier": 2.0,
 			"GravityModifier": 0.5
 		  }
@@ -48,15 +48,15 @@ Add the round end abilities feature to your `vip_groups.jsonc` file:
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `SpeedModifier` | float | 1.5 | Movement speed multiplier applied at round end |
+| `SpeedModifier` | float | 2.0 | Movement speed multiplier applied at round end |
 | `GravityModifier` | float | 0.5 | Gravity multiplier applied at round end |
 
 ### Modifier Examples
 
 **Speed Modifiers:** [0-9]
 - `1.0` - Normal speed
-- `1.5` - 50% faster movement (default)
-- `2.0` - Double speed
+- `1.5` - 50% faster movement
+- `2.0` - Double speed (default)
 - `3.0` - Triple speed
 - `0.5` - Half speed (slower)
 

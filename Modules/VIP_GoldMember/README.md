@@ -50,8 +50,8 @@ Here's an example configuration:
     "VipGroup": "VIP",
 
     // Duration passed to GiveClientVip
-    // 0 = temporary (VIP only while DNS is in the name, revoked when removed)
-    // Any other value = permanent grant using VIPCore's TimeMode (seconds/minutes/hours/days)
+    // 0 = temporary (VIP only while DNS is in the name, revoked when removed; never stored)
+    // Any other value = a grant of that length in VIPCore's TimeMode units, given again while the name still carries the DNS
     "Duration": 0,
 
     // How often (in seconds) to re-check all players' names for the DNS

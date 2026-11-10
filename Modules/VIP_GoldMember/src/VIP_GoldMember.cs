@@ -17,7 +17,7 @@ public class GoldMemberConfig
     public float CheckIntervalSeconds { get; set; } = 10.0f;
 }
 
-[PluginMetadata(Id = "VIP_GoldMember", Version = "1.0.0", Name = "VIP_GoldMember", Author = "aga", Description = "Grants VIP to players who have a specified DNS/tag in their name.")]
+[PluginMetadata(Id = "VIP_GoldMember", Version = "1.0.1", Name = "VIP_GoldMember", Author = "aga", Description = "Grants VIP to players who have a specified DNS/tag in their name.")]
 public partial class VIP_GoldMember : BasePlugin {
   private IVipCoreApiV1? _vipApi;
   private GoldMemberConfig _config = new();
@@ -108,11 +108,8 @@ public partial class VIP_GoldMember : BasePlugin {
     var player = Core.PlayerManager.GetPlayer(@event.PlayerId);
     if (player == null || player.IsFakeClient) return;
 
-    if (_grantedByUs.TryRemove(player.SteamID, out _))
-    {
-      if (_config.Duration == 0 && _vipApi != null && _vipApi.IsClientVip(player))
-        _vipApi.RemoveClientVip(player);
-    }
+    // A Duration 0 grant is an in-memory override, which VIPCore drops with the player.
+    _grantedByUs.TryRemove(player.SteamID, out _);
   }
 
   private void CheckAllPlayers()
@@ -143,7 +140,11 @@ public partial class VIP_GoldMember : BasePlugin {
     {
       if (!_vipApi.IsClientVip(player))
       {
-        _vipApi.GiveClientVip(player, _config.VipGroup, _config.Duration);
+        // Duration 0 lasts while the name carries the text: memory only, so a restart cannot leave it stored.
+        if (_config.Duration == 0)
+          _vipApi.OverrideClientVipGroup(player, _config.VipGroup);
+        else
+          _vipApi.GiveClientVip(player, _config.VipGroup, _config.Duration);
         _grantedByUs[player.SteamID] = true;
       }
       else if (!_grantedByUs.ContainsKey(player.SteamID))
@@ -153,9 +154,7 @@ public partial class VIP_GoldMember : BasePlugin {
     {
       if (_config.Duration == 0 && _grantedByUs.TryGetValue(player.SteamID, out var wasGrantedByUs) && wasGrantedByUs)
       {
-        if (_vipApi.IsClientVip(player))
-          _vipApi.RemoveClientVip(player);
-
+        _vipApi.ClearClientVipGroupOverride(player);
         _grantedByUs.TryRemove(player.SteamID, out _);
       }
     }

@@ -15,7 +15,7 @@
 
 VIP_AntiFlash is a VIPCore module that gives VIP players immunity to flashbang grenades. The immunity can be configured per VIP group with different modes: full immunity, teammates only, self-flash only, or a combination.
 
-In the VIP menu the perk reads *Flashbangs can't blind you* (translation key `vip.antiflash.description`). The module currently applies full immunity whatever mode the group sets.
+In the VIP menu the perk reads *Flashbangs can't blind you*, or the line for the group's mode (translation keys `vip.antiflash.description*`).
 
 ## Installation
 
@@ -25,7 +25,7 @@ In the VIP menu the perk reads *Flashbangs can't blind you* (translation key `vi
 
 ## VIP Group Configuration
 
-Add the antiflash feature to your `vip_groups.jsonc` file:
+Add the antiflash feature to your `vip_groups.jsonc` file. A plain value gives full immunity; an object picks a mode:
 
 ```jsonc
 {
@@ -33,12 +33,12 @@ Add the antiflash feature to your `vip_groups.jsonc` file:
     "Groups": {
       "GOLD": {
         "Values": {
-          "vip.antiflash": 0  // Full immunity (default)
+          "vip.antiflash": 1  // Full immunity
         }
       },
       "SILVER": {
         "Values": {
-          "vip.antiflash": 1  // Immune to teammates' flashbangs only
+          "vip.antiflash": { "Mode": 1 }  // Immune to teammates' flashbangs only
         }
       }
     }
@@ -48,12 +48,14 @@ Add the antiflash feature to your `vip_groups.jsonc` file:
 
 ### Configuration Options
 
-| Value | Mode | Description |
-|-------|------|-------------|
-| `0` | Full Immunity | Immune to all flashbangs (default behavior) |
-| `1` | Teammates Only | Immune only to flashbangs thrown by teammates |
-| `2` | Self Only | Immune only to your own flashbangs |
-| `3` | Teammates + Self | Immune to both teammates' and your own flashbangs |
+`Mode` takes the number or the name.
+
+| Mode | Name | Description |
+|------|------|-------------|
+| `0` | `All` | Immune to all flashbangs (default, and what a plain value gives) |
+| `1` | `Teammates` | Immune only to flashbangs thrown by teammates |
+| `2` | `Own` | Immune only to your own flashbangs |
+| `3` | `TeammatesAndOwn` | Immune to both teammates' and your own flashbangs |
 
 ### Configuration Examples
 
@@ -63,17 +65,17 @@ Add the antiflash feature to your `vip_groups.jsonc` file:
     "Groups": {
       "PLATINUM": {
         "Values": {
-          "vip.antiflash": 0  // Full immunity - no flashbangs will blind
+          "vip.antiflash": 1  // Full immunity - no flashbangs will blind
         }
       },
       "GOLD": {
         "Values": {
-          "vip.antiflash": 1  // Team-friendly - immune to teammates only
+          "vip.antiflash": { "Mode": "Teammates" }  // Team-friendly - immune to teammates only
         }
       },
       "SILVER": {
         "Values": {
-          "vip.antiflash": 2  // Self-protection - immune to own flashes only
+          "vip.antiflash": { "Mode": 2 }  // Self-protection - immune to own flashes only
         }
       }
     }

@@ -60,7 +60,7 @@ Add the tag feature to your `vip_groups.jsonc` file:
 ### How It Works
 
 - Players pick a tag, or *No tag*, on the VIP menu's Customize page
-- A tag may use chat colour markup such as `[gold][PREMIUM]` (the tags listed in VIP_ChatColor's README); the menu lists it without the markup, in the colour most of it is drawn in. The scoreboard clan tag shows the text exactly as written, markup included
+- A tag may use chat colour markup such as `[gold][PREMIUM]` (the tags listed in VIP_ChatColor's README); the menu lists it without the markup, in the colour most of it is drawn in. The scoreboard clan tag shows the text without the markup
 - Until a player picks, the first tag is used
 - The selected tag is saved via cookies and persists across sessions
 

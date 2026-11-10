@@ -156,7 +156,13 @@ public class VipCoreApiV1 : IVipCoreApiV1
 
     public bool IsClientVip(IPlayer player) => VipService.IsClientVip(player);
 
-    public void GiveClientVip(IPlayer player, string group, int time)
+    public void GiveClientVip(IPlayer player, string group, int time) =>
+        GiveClientVip(player, (steamId, name) => VipService.AddVip(steamId, name, group, time));
+
+    public void GiveClientVip(IPlayer player, string group, TimeSpan duration) =>
+        GiveClientVip(player, (steamId, name) => VipService.AddVip(steamId, name, group, duration));
+
+    private void GiveClientVip(IPlayer player, Func<long, string, Task> add)
     {
         if (_serviceProvider == null) return;
         if (!player.IsValid) return;
@@ -169,7 +175,7 @@ public class VipCoreApiV1 : IVipCoreApiV1
         {
             try
             {
-                await VipService.AddVip(steamId, name, group, time);
+                await add(steamId, name);
                 await directory.RefreshAsync(changed: true);
 
                 // Validate player is still valid before loading

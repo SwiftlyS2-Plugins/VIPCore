@@ -10,7 +10,7 @@ using VIPCore.Contract;
 
 namespace VIP_GunMenu;
 
-[PluginMetadata(Id = "VIP_GunMenu", Version = "1.1.0", Name = "VIP_GunMenu", Author = "shmitz", Description = "Allows players to equip a weapon for free")]
+[PluginMetadata(Id = "VIP_GunMenu", Version = "1.1.1", Name = "VIP_GunMenu", Author = "shmitz", Description = "Allows players to equip a weapon for free")]
 public partial class VIP_GunMenu : BasePlugin
 {
     private const string FeatureKey = "vip.gun_menu";
@@ -80,7 +80,18 @@ public partial class VIP_GunMenu : BasePlugin
             builder.AddJsonFile(configPath, optional: false, reloadOnChange: true);
         });
 
-        _pluginConfig = Core.Configuration.Manager.GetSection("GunMenu").Get<PluginConfig>() ?? new PluginConfig();
+        _pluginConfig = ReadPluginConfig(Core.Configuration.Manager.GetSection("GunMenu"));
+    }
+
+    // Bound onto an empty list, since the binder appends to a non-empty default.
+    private static PluginConfig ReadPluginConfig(IConfigurationSection section)
+    {
+        var config = new PluginConfig { CommandAliases = [] };
+        section.Bind(config);
+        if (!section.GetSection(nameof(PluginConfig.CommandAliases)).Exists())
+            config.CommandAliases = [.. PluginConfig.DefaultCommandAliases];
+
+        return config;
     }
 
     private void RegisterAliases()

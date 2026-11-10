@@ -24,7 +24,7 @@ namespace VIP_Flags;
 [PluginMetadata
 (
     Id = "VIP_Flags", 
-    Version = "1.0.1", 
+    Version = "1.0.2", 
     Name = "VIP_Flags", 
     Author = "SLAYER", 
     Description = "Manages VIP flags for players"
@@ -90,7 +90,7 @@ public partial class VIP_Flags(ISwiftlyCore core) : BasePlugin(core)
         try
         {
             var config = _vipApi?.GetFeatureValue<FlagsConfig>(player, FeatureKey);
-            var count = config?.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries).Distinct().Count() ?? 0;
+            var count = config == null ? 0 : SplitPermissions(config.Permissions).Length;
             if (count == 0) return null;
 
             var localizer = Core.Translation.GetPlayerLocalizer(player);
@@ -131,14 +131,9 @@ public partial class VIP_Flags(ISwiftlyCore core) : BasePlugin(core)
     private void OnClientDisconnected(IOnClientDisconnectedEvent @event)
     {
         var player = Core.PlayerManager.GetPlayer(@event.PlayerId);
-        if (player == null || !player.IsValid || player.IsFakeClient) return;
-        if (_grantedByUs.TryGetValue(player.SteamID, out var permissions) && permissions.Length > 0)
-        {
-            if (_vipApi != null && _vipApi.IsClientVip(player))
-                TakeFlags(player);
-        }
+        if (player == null || player.IsFakeClient) return;
 
-        _grantedByUs.Remove(player.SteamID);
+        TakeFlags(player.SteamID);
     }
     private void CheckPlayer(IPlayer player)
     {
@@ -150,7 +145,7 @@ public partial class VIP_Flags(ISwiftlyCore core) : BasePlugin(core)
         }
         if(!_vipApi.IsClientVip(player) || _vipApi.GetClientVipGroups(player).Count() == 0 || _vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled)
         {
-            TakeFlags(player);
+            TakeFlags(player.SteamID);
         }
     }
     private void GiveFlags(IPlayer player)
@@ -161,36 +156,48 @@ public partial class VIP_Flags(ISwiftlyCore core) : BasePlugin(core)
         if (config == null) return;
 
         var steamId = player.SteamID;
-        var permissions = config.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries);
-        var grantedPermissions = new List<string>();
+        var permissions = SplitPermissions(config.Permissions);
+        var granted = _grantedByUs.TryGetValue(steamId, out var held) ? held.ToHashSet() : new HashSet<string>();
+
+        // Only permissions Flags added are tracked, so taking them back never strips one the player has from elsewhere.
         foreach (var permission in permissions)
         {
-            if (!Core.Permission.PlayerHasPermission(player.SteamID, permission))
-            {
-                Core.Permission.AddPermission(steamId, permission);
-            }
-            grantedPermissions.Add(permission);
-        }
-        _grantedByUs[steamId] = grantedPermissions.ToArray(); // Track what we granted for cleanup on disconnect
-    }
-    private void TakeFlags(IPlayer player)
-    {
-        if (_vipApi == null || !player.IsValid || player.IsFakeClient) return;
+            if (granted.Contains(permission) || Core.Permission.PlayerHasPermission(steamId, permission)) continue;
 
-        var steamId = player.SteamID;
-        foreach (var permission in _grantedByUs.TryGetValue(steamId, out var perms) ? perms : Array.Empty<string>())
+            Core.Permission.AddPermission(steamId, permission);
+            granted.Add(permission);
+        }
+
+        foreach (var dropped in granted.Except(permissions).ToList())
         {
-            if (Core.Permission.PlayerHasPermission(player.SteamID, permission))
+            Core.Permission.RemovePermission(steamId, dropped);
+            granted.Remove(dropped);
+        }
+
+        _grantedByUs[steamId] = granted.ToArray();
+    }
+    private void TakeFlags(ulong steamId)
+    {
+        if (!_grantedByUs.Remove(steamId, out var permissions)) return;
+
+        foreach (var permission in permissions)
+        {
+            if (Core.Permission.PlayerHasPermission(steamId, permission))
             {
                 Core.Permission.RemovePermission(steamId, permission);
             }
         }
-        _grantedByUs.Remove(steamId);
     }
+
+    private static string[] SplitPermissions(string permissions) =>
+        permissions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Distinct().ToArray();
     
     
     public override void Unload()
     {
+        foreach (var steamId in _grantedByUs.Keys.ToList())
+            TakeFlags(steamId);
+
         if (_vipApi != null)
         {
             _vipApi.OnCoreReady -= RegisterVipFeatures;
