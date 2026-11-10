@@ -10,7 +10,7 @@ using SwiftlyS2.Shared.SchemaDefinitions;
 
 namespace VIP_RoundEndAbilities;
 
-[PluginMetadata(Id = "VIP_RoundEndAbilities", Version = "1.0.1", Name = "VIP_RoundEndAbilities", Author = "shmitz", Description = "Gives items when player spawns")]
+[PluginMetadata(Id = "VIP_RoundEndAbilities", Version = "1.0.2", Name = "VIP_RoundEndAbilities", Author = "shmitz", Description = "Gives items when player spawns")]
 public partial class VIP_RoundEndAbilities : BasePlugin
 {
     private const string FeatureKey = "vip.round_end_abilities";
@@ -99,13 +99,13 @@ public partial class VIP_RoundEndAbilities : BasePlugin
         var players = Core.PlayerManager.GetAlive();
         foreach (var player in players)
         {
-            if (player == null || player.PlayerPawn == null) return HookResult.Continue;
+            if (player == null || player.PlayerPawn == null) continue;
 
-            if (!_vipApi.IsClientVip(player)) return HookResult.Continue;
-            if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled) return HookResult.Continue;
+            if (!_vipApi.IsClientVip(player)) continue;
+            if (_vipApi.GetPlayerFeatureState(player, FeatureKey) != FeatureState.Enabled) continue;
 
             var config = _vipApi.GetFeatureValue<Config>(player, FeatureKey);
-            if (config == null) return HookResult.Continue;
+            if (config == null) continue;
             Core.Scheduler.NextTick(() => ApplyAbilities(player, config));
         }
 
@@ -178,6 +178,6 @@ public partial class VIP_RoundEndAbilities : BasePlugin
 
 public class Config
 {
-    public float SpeedModifier = 2f;
-    public float GravityModifier = 0.5f;
+    public float SpeedModifier { get; set; } = 2f;
+    public float GravityModifier { get; set; } = 0.5f;
 }

@@ -81,14 +81,17 @@ public partial class VIP_GunMenu
         if (config == null) return ([], []);
 
         List<Gun> primaries = !IsPistolRound() || config.GivePrimariesOnPistolRound
-            ? config.AvailablePrimaryGuns.DistinctBy(g => g.WeaponName).ToList()
+            ? Offered(config.AvailablePrimaryGuns, GroupConfig.DefaultPrimaryGuns)
             : [];
         // Without GiveSecondariesAfterPrimaries the chained menus offered pistols only when there were no primaries.
         List<Gun> pistols = config.GiveSecondariesAfterPrimaries || primaries.Count == 0
-            ? config.AvailableSecondaryGuns.DistinctBy(g => g.WeaponName).ToList()
+            ? Offered(config.AvailableSecondaryGuns, GroupConfig.DefaultSecondaryGuns)
             : [];
         return (primaries, pistols);
     }
+
+    private static List<Gun> Offered(List<Gun>? configured, List<Gun> defaults) =>
+        (configured is { Count: > 0 } ? configured : defaults).DistinctBy(g => g.WeaponName).ToList();
 
     private void AddGuns(IMenuBuilder builder, GunPage page, string group, string heading, List<Gun> guns)
     {

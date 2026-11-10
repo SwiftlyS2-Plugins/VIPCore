@@ -12,7 +12,7 @@ using Cookies.Contract;
 
 namespace VIP_Test;
 
-[PluginMetadata(Id = "VIP_Test", Version = "1.0.0", Name = "VIP Test", Author = "aga", Description = "Gives players a timed trial VIP.")]
+[PluginMetadata(Id = "VIP_Test", Version = "1.0.1", Name = "VIP Test", Author = "aga", Description = "Gives players a timed trial VIP.")]
 public class VIP_Test : BasePlugin
 {
     private const string CookieCount = "vip_test_count";
@@ -136,7 +136,7 @@ public class VIP_Test : BasePlugin
         var formattedTime = timeRemaining.ToString(timeRemaining.Hours > 0 ? @"h\:mm\:ss" : @"m\:ss");
 
         context.Reply(localizer["viptest.SuccessfullyPassed", formattedTime]);
-        api.GiveClientVip(player, config.VipTestGroup, config.VipTestDuration);
+        api.GiveClientVip(player, config.VipTestGroup, TimeSpan.FromSeconds(config.VipTestDuration));
     }
 
     private void OnCommandVipTestReset(ICommandContext context)
