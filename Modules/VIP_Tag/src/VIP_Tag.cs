@@ -20,7 +20,7 @@ public class ChatColorConfig
   public string T { get; set; } = "";
 }
 
-[PluginMetadata(Id = "VIP_Tag", Version = "1.1.0", Name = "VIP_Tag", Author = "aga", Description = "No description.")]
+[PluginMetadata(Id = "VIP_Tag", Version = "1.1.1", Name = "VIP_Tag", Author = "aga", Description = "No description.")]
 public partial class VIP_Tag : BasePlugin {
   private const string FeatureKey = "vip.tag";
   private const string FeatureValueCookieKey = FeatureKey + ".value";
@@ -404,8 +404,9 @@ public partial class VIP_Tag : BasePlugin {
       if (tags != null && idx > 0)
       {
         var listIndex = idx - 1;
+        // The scoreboard can't colour a clan tag, so it gets the text without the markup chat uses.
         if (listIndex >= 0 && listIndex < tags.Count)
-          tag = tags[listIndex] ?? string.Empty;
+          tag = ParseTag(tags[listIndex] ?? string.Empty).Label;
       }
     }
 

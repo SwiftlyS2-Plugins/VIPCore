@@ -85,6 +85,8 @@ A module that calls these needs VIPCore 1.2.0 or later: an older VIPCore exports
 |--------|-------------|
 | `GiveClientVip(player, group, TimeSpan duration)` | Grants for an exact length whatever the server's `TimeMode` is. The `int` overload counts in `TimeMode` units |
 
+`OnPlayerSpawn` is raised after every spawn of a human player from VIPCore 1.3.0; earlier versions raised it once, when the player joined.
+
 ### Menu rows
 
 Every row of VIPCore's menus carries a record as its component `Tag`, so a renderer can draw it from data instead of parsing its text: `VipFeatureRow` (a perk), `VipSectionRow` (a heading over a feature's or a group's choices), `VipOptionRow` (one choice, `Selected` when in use), `VipUserRow`, `VipGrantRow`, `VipLengthRow`, `VipPlayerRow`, `VipGroupRow`, `VipScopeRow` and `VipActionRow` (an action or a summary line). A changed row gets a new record and its session is invalidated. A module page built the same way (sections and options, a `VipActionRow` summary and submit, a `VipFeatureLimit` as the menu's `Tag`) is drawn like VIPCore's own.
