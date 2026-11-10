@@ -50,7 +50,7 @@ public sealed partial class VIPCore
                     {
                         Task.Run(async () =>
                         {
-                            try { await vipService.LoadPlayer(target); }
+                            try { await _vipCoreApi.ReloadPlayer(target); }
                             catch (Exception ex) { Core.Logger.LogError(ex, "[VIPCore] Failed to reload VIP player {SteamId}", steamId); }
                         });
                     }

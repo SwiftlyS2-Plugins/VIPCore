@@ -61,7 +61,7 @@ public sealed partial class VIPCore
                         {
                             try
                             {
-                                await vipService.LoadPlayer(target);
+                                await _vipCoreApi.ReloadPlayer(target);
                             }
                             catch (Exception loadEx)
                             {

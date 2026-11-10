@@ -160,7 +160,17 @@ public sealed partial class VIPCore : BasePlugin
                     Core.Scheduler.NextTick(() =>
                     {
                         if (!player.IsValid) return;
-                        _vipCoreApi?.RaisePlayerRemoved(player, expiredGroup);
+
+                        var active = vipService.GetVipUser(player.SteamID);
+                        // Extended on another server since it was loaded: nothing ran out.
+                        if (active != null && active.OwnedGroups.Contains(expiredGroup, StringComparer.OrdinalIgnoreCase)) return;
+
+                        // Another group the player holds takes over; modules hear of it as a load, not a removal.
+                        if (active != null)
+                            _vipCoreApi.RaisePlayerLoaded(player, active.group);
+                        else
+                            _vipCoreApi.RaisePlayerRemoved(player, expiredGroup);
+
                         var localizer = Core.Translation.GetPlayerLocalizer(player);
                         player.SendMessage(MessageType.Chat, localizer["vip.Expired", expiredGroup]);
                     });
@@ -376,6 +386,7 @@ public sealed partial class VIPCore : BasePlugin
         var services = new ServiceCollection();
         services
             .AddSwiftly(Core)
+            .AddSingleton(_vipCoreApi)
             .AddSingleton(_groupsConfig!)
             .AddSingleton<DatabaseConnectionFactory>()
             .AddSingleton<IUserRepository, UserRepository>()

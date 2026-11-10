@@ -57,6 +57,26 @@ public class VipCoreApiV1 : IVipCoreApiV1
 
     internal void RaiseOnPlayerSpawn(IPlayer player) => OnPlayerSpawn?.Invoke(player);
 
+    /// <summary>Reloads a player whose grants changed, then raises PlayerLoaded, or PlayerRemoved when no group is left.</summary>
+    internal async Task ReloadPlayer(IPlayer? player)
+    {
+        if (_serviceProvider == null || player is not { IsValid: true }) return;
+
+        var before = GetClientVipGroup(player);
+        await VipService.ReloadPlayer(player);
+
+        _core.Scheduler.NextTick(() =>
+        {
+            if (!player.IsValid) return;
+
+            var after = GetClientVipGroup(player);
+            if (after.Length > 0)
+                RaisePlayerLoaded(player, after);
+            else if (before.Length > 0)
+                RaisePlayerRemoved(player, before);
+        });
+    }
+
     public void RegisterFeature(string featureKey, FeatureType featureType = FeatureType.Toggle, Action<IPlayer, FeatureState>? onSelectItem = null, Func<IPlayer, string>? displayNameResolver = null)
     {
         if (Config.VipLogging)
