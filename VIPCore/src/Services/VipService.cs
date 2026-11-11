@@ -276,9 +276,7 @@ public class VipService(
 
         foreach (var feature in featureService.GetRegisteredFeatures())
         {
-            var hasFeature = group.ValuesSection != null
-                ? group.ValuesSection.GetChildren().Any(c => c.Key.Equals(feature.Key, StringComparison.OrdinalIgnoreCase))
-                : group.Values.ContainsKey(feature.Key);
+            var hasFeature = group.HasFeature(feature.Key);
 
             if (!hasFeature)
             {
@@ -427,9 +425,7 @@ public class VipService(
             if (groupName == null || !groupsConfig.Groups.TryGetValue(groupName, out var group))
                 continue;
 
-            var hasFeatureKey = group.ValuesSection != null
-                ? group.ValuesSection.GetChildren().Any(c => c.Key.Equals(featureKey, StringComparison.OrdinalIgnoreCase))
-                : group.Values.ContainsKey(featureKey);
+            var hasFeatureKey = group.HasFeature(featureKey);
 
             if (!hasFeatureKey)
             {
