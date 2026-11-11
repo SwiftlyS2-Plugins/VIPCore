@@ -50,4 +50,8 @@ public static class VipMenuIds
     public const string Users = "vipcore.users";
     public const string UsersList = "vipcore.users.list";
     public const string Grant = "vipcore.grant";
+    // Grant VIP's later steps, each opened from the one before: the group, how long, then where, which grants it.
+    public const string GrantGroup = "vipcore.grant.group";
+    public const string GrantLength = "vipcore.grant.length";
+    public const string GrantScope = "vipcore.grant.scope";
 }

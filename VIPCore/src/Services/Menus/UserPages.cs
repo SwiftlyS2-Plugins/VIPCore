@@ -266,8 +266,7 @@ public class UserPages(MenuKit kit, VipService vipService, VipDirectory director
         var page = grantPage.Build(ctx.Player, new GrantState
         {
             Player = user.Info.SteamId,
-            PlayerName = user.Info.Name,
-            PlayerGroup = user.Info.Grants.FirstOrDefault()?.Group
+            PlayerName = user.Info.Name
         });
         page.Parent = ctx.Menu;
         page.Open(ctx.Player);

@@ -13,7 +13,8 @@ public class MenuPageRegistry(ISwiftlyCore core)
 {
     private static readonly HashSet<string> ReservedIds = new(StringComparer.OrdinalIgnoreCase)
     {
-        VipMenuIds.Hub, VipMenuIds.Perks, VipMenuIds.Customize, VipMenuIds.Users, VipMenuIds.UsersList, VipMenuIds.Grant
+        VipMenuIds.Hub, VipMenuIds.Perks, VipMenuIds.Customize, VipMenuIds.Users, VipMenuIds.UsersList, VipMenuIds.Grant,
+        VipMenuIds.GrantGroup, VipMenuIds.GrantLength, VipMenuIds.GrantScope
     };
 
     private readonly ConcurrentDictionary<string, VipMenuPage> _pages = new(StringComparer.OrdinalIgnoreCase);
