@@ -351,8 +351,7 @@ public class VipCoreApiV1 : IVipCoreApiV1
 
         if (group.ValuesSection == null) return default;
 
-        var featureSection = group.ValuesSection.GetChildren()
-            .FirstOrDefault(c => c.Key.Equals(featureKey, StringComparison.OrdinalIgnoreCase));
+        var featureSection = group.FeatureSection(featureKey);
         if (featureSection == null) return default;
 
         return featureSection.Get<T>() ?? new T();
