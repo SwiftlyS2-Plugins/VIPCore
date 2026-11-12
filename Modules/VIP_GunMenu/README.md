@@ -8,7 +8,7 @@
   <img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build Status">
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4" alt=".NET 10">
   <img src="https://img.shields.io/badge/SwiftlyS2-compatible-blue" alt="SwiftlyS2">
-  <img src="https://img.shields.io/github/license/shmitzas/rampage-plugins-VipCore" alt="License">
+  <img src="https://img.shields.io/github/license/shmitzas/VIPCore" alt="License">
 </p>
 
 ---
