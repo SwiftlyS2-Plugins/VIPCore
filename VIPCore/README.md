@@ -22,7 +22,7 @@ VIPCore is the central VIP management plugin for SwiftlyS2. It provides database
 - **Modular feature system** - extend with custom VIP feature modules
 - **VIP menu** - `!vip` opens Perks: each feature with its one-line description, toggles switched in place; Customize lists the choices modules offer (field of view, chat tag); modules can add pages of their own (the gun menu)
 - **Cookie-based preferences** - player feature states persist across sessions
-- **Admin pages** - VIP users (a tab per group, each VIP's grants with extend, make permanent and remove) and Grant VIP (player, group, scope and length on one page)
+- **Admin pages** - VIP users (a tab per group, each VIP's grants with extend, make permanent and remove) and Grant VIP (an online player, then the group, the length and where, a page each)
 - **Hot-reload support** - configuration changes apply without restart
 
 ## Installation
@@ -89,7 +89,7 @@ Global grants use `sid = 0`; all participating servers must use the same databas
 | Customize | `vipcore.customize` | VIPs whose group has a feature that lists its choices |
 | A module's page (Gun menu) | the module's own id (`vipcore.gun-menu`) | as the module decides |
 | VIP users | `vipcore.users`, its tabs `vipcore.users.list[.<group>]` | `vipcore.manage` |
-| Grant VIP | `vipcore.grant` | `vipcore.manage` |
+| Grant VIP | `vipcore.grant`, its steps `vipcore.grant.group`, `vipcore.grant.length`, `vipcore.grant.scope` | `vipcore.manage` |
 
 `FreezeMenu` freezes the player on Perks, Customize and module pages, `FreezeAdminMenu` on the admin pages. Extending a grant on VIP users offers 1 day, 1 week, 1 month, 3 months and 1 year in every `TimeMode`; Grant VIP offers the lengths the old duration menu did, plus Permanent.
 

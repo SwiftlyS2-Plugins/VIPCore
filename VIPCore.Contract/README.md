@@ -85,6 +85,14 @@ A module that calls these needs VIPCore 1.2.0 or later: an older VIPCore exports
 |--------|-------------|
 | `GiveClientVip(player, group, TimeSpan duration)` | Grants for an exact length whatever the server's `TimeMode` is. The `int` overload counts in `TimeMode` units |
 
+### Grant VIP steps (contract 1.3.0, VIPCore 1.4.0)
+
+| Member | Description |
+|--------|-------------|
+| `VipMenuIds.GrantGroup`, `GrantLength`, `GrantScope` | Grant VIP's pages after the player list (`VipMenuIds.Grant`): the group, the length, then where it applies. `OpenMenu` opens the hub for these, since each step needs the choices before it |
+
+They are constants, so a renderer built against them still runs on an older VIPCore, which never shows these pages.
+
 ### Menu rows
 
 Every row of VIPCore's menus carries a record as its component `Tag`, so a renderer can draw it from data instead of parsing its text: `VipFeatureRow` (a perk), `VipSectionRow` (a heading over a feature's or a group's choices), `VipOptionRow` (one choice, `Selected` when in use), `VipUserRow`, `VipGrantRow`, `VipLengthRow`, `VipPlayerRow`, `VipGroupRow`, `VipScopeRow` and `VipActionRow` (an action or a summary line). A changed row gets a new record and its session is invalidated. A module page built the same way (sections and options, a `VipActionRow` summary and submit, a `VipFeatureLimit` as the menu's `Tag`) is drawn like VIPCore's own.
